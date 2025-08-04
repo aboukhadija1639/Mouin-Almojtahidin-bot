@@ -1,94 +1,54 @@
-import { getAllAssignments } from '../utils/database.js';
+import { getAssignments } from '../utils/database.js';
 import { config } from '../../config.js';
+import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
 
 export async function handleAssignments(ctx) {
   try {
-    // Get all assignments from database
-    const assignments = await getAllAssignments();
-
-    if (assignments.length === 0) {
+    const assignments = await getAssignments();
+    if (!assignments || assignments.length === 0) {
       await ctx.reply(
-        `📝 *قائمة الواجبات*\\n\\n` +
-        `لا توجد واجبات مضافة حالياً\\.\n\n` +
-        `💡 للمساعدة: ${config.admin.supportChannel.replace(/@/g, '\\@')}`,
-        { 
-          parse_mode: 'MarkdownV2',
-          disable_web_page_preview: true 
-        }
+        `📝 *${escapeMarkdownV2('قائمة الواجبات')}*\n━━━━━━━━━━━━━━━━━━━━\n${escapeMarkdownV2('لا توجد واجبات حالياً.')}\n💡 ${escapeMarkdownV2('للمساعدة:')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
-
-    // Build assignments message
-    let message = `📝 *قائمة الواجبات المتاحة*\\n\\n`;
-    
-    let activeAssignments = [];
-    let expiredAssignments = [];
     const now = new Date();
-
-    assignments.forEach((assignment) => {
-      // Escape special characters for MarkdownV2
-      const escapedTitle = assignment.title.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
-      const escapedQuestion = assignment.question.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
-      
-      let assignmentInfo = `🆔 *الواجب رقم ${assignment.assignment_id}*\\n`;
-      assignmentInfo += `📋 العنوان: ${escapedTitle}\\n`;
-      assignmentInfo += `❓ السؤال: ${escapedQuestion}\\n`;
-      
-      if (assignment.deadline) {
-        const deadlineDate = new Date(assignment.deadline);
-        const formattedDeadline = deadlineDate.toLocaleDateString('ar-SA');
-        const formattedTime = deadlineDate.toLocaleTimeString('ar-SA', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        });
-        
-        assignmentInfo += `⏰ الموعد النهائي: ${formattedDeadline} \\- ${formattedTime}\\n`;
-        
-        if (deadlineDate > now) {
-          const daysLeft = Math.ceil((deadlineDate - now) / (1000 * 60 * 60 * 24));
-          assignmentInfo += `⏳ المتبقي: ${daysLeft} ${daysLeft === 1 ? 'يوم' : 'أيام'}\\n`;
-          assignmentInfo += `\\n✅ *للإجابة:* \`/submit ${assignment.assignment_id} إجابتك\`\\n`;
-          activeAssignments.push(assignmentInfo);
-        } else {
-          assignmentInfo += `❌ *انتهى الموعد النهائي*\\n`;
-          expiredAssignments.push(assignmentInfo);
-        }
-      } else {
-        assignmentInfo += `⏰ بدون موعد نهائي\\n`;
-        assignmentInfo += `\\n✅ *للإجابة:* \`/submit ${assignment.assignment_id} إجابتك\`\\n`;
-        activeAssignments.push(assignmentInfo);
-      }
+    let active = [], past = [];
+    assignments.forEach(assignment => {
+      const deadline = new Date(assignment.deadline);
+      const formattedDeadline = deadline.toLocaleDateString('ar-SA') + ' - ' + deadline.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+      const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+      const status = deadline > now ? `⏳ ${escapeMarkdownV2('المتبقي:')} ${daysLeft} ${escapeMarkdownV2('أيام')}` : '⏰ ' + escapeMarkdownV2('انتهى');
+      const item = `*🆔 ${escapeMarkdownV2('الواجب رقم')} ${assignment.assignment_id}*\n` +
+        `📋 ${escapeMarkdownV2('العنوان:')} ${escapeMarkdownV2(assignment.title)}\n` +
+        `❓ ${escapeMarkdownV2('السؤال:')} ${escapeMarkdownV2(assignment.question)}\n` +
+        `⏰ ${escapeMarkdownV2('الموعد النهائي:')} ${escapeMarkdownV2(formattedDeadline)}\n` +
+        `${status}\n` +
+        `✅ ${escapeMarkdownV2('للإجابة:')} /submit ${assignment.assignment_id} إجابتك`;
+      if (deadline > now) active.push(item);
+      else past.push(item);
     });
-
-    // Add active assignments
-    if (activeAssignments.length > 0) {
-      message += `🟢 *الواجبات النشطة:*\\n\\n`;
-      message += activeAssignments.join('\\n━━━━━━━━━━━━━━━━━━━━\\n\\n');
-      message += `\\n`;
+    let message = `📝 *${escapeMarkdownV2('قائمة الواجبات المتاحة')}*\n━━━━━━━━━━━━━━━━━━━━`;
+    if (active.length > 0) {
+      message += `\n🟢 *${escapeMarkdownV2('الواجبات النشطة:')}*\n${active.join('\n\n')}\n`;
     }
-
-    // Add expired assignments
-    if (expiredAssignments.length > 0) {
-      message += `🔴 *الواجبات المنتهية الصلاحية:*\\n\\n`;
-      message += expiredAssignments.join('\\n━━━━━━━━━━━━━━━━━━━━\\n\\n');
-      message += `\\n`;
+    if (past.length > 0) {
+      message += `\n🔴 *${escapeMarkdownV2('الواجبات المنتهية:')}*\n${past.join('\n\n')}\n`;
     }
-
-    message += `━━━━━━━━━━━━━━━━━━━━\\n\\n`;
-    message += `📊 إجمالي الواجبات: ${assignments.length}\\n`;
-    message += `🟢 النشطة: ${activeAssignments.length}\\n`;
-    message += `🔴 المنتهية: ${expiredAssignments.length}\\n\\n`;
-    message += `💡 *مثال للإجابة:* \`/submit 1 هذه إجابتي\`\\n\\n`;
-    message += `💡 للمساعدة: ${config.admin.supportChannel.replace(/@/g, '\\@')}`;
-
-    await ctx.reply(message, { 
+    message += `━━━━━━━━━━━━━━━━━━━━\n`;
+    message += `📊 ${escapeMarkdownV2('إجمالي الواجبات:')} ${assignments.length}\n`;
+    message += `🟢 ${escapeMarkdownV2('النشطة:')} ${active.length}\n`;
+    message += `🔴 ${escapeMarkdownV2('المنتهية:')} ${past.length}\n`;
+    message += `💡 ${escapeMarkdownV2('للمساعدة:')} ${escapeMarkdownV2(config.admin.supportChannel)}`;
+    await ctx.reply(message, {
       parse_mode: 'MarkdownV2',
-      disable_web_page_preview: true 
+      disable_web_page_preview: true
     });
-
   } catch (error) {
-    console.error('خطأ في أمر /assignments:', error);
-    await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`);
+    try {
+      const fs = await import('fs');
+      fs.appendFileSync('./data/error.log', `[ASSIGNMENTS] ${new Date().toISOString()}\n${error.stack || error}\n`);
+    } catch (e) {}
+    await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${escapeMarkdownV2(config.admin.supportChannel)}`, { parse_mode: 'MarkdownV2' });
   }
 }
