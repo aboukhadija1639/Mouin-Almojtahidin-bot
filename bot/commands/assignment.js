@@ -10,8 +10,8 @@ export async function handleAddAssignment(ctx) {
     // Check if user is admin
     if (!config.admin.userIds.includes(userId)) {
       await ctx.reply(
-        `🚫 *غير مسموح*\n\n` +
-        `هذا الأمر مخصص للمدراء فقط.\n\n` +
+        `🚫 *غير مسموح*\n` +
+        `هذا الأمر مخصص للمدراء فقط.\n` +
         `للمساعدة، تواصل مع ${config.admin.supportChannel}`,
         { parse_mode: 'Markdown' }
       );
@@ -22,9 +22,9 @@ export async function handleAddAssignment(ctx) {
     const args = messageText.split(' ');
     if (args.length < 6) {
       await ctx.reply(
-        `📝 *كيفية إضافة واجب*\n\n` +
+        `📝 *كيفية إضافة واجب*\n` +
         `الصيغة الصحيحة:\n` +
-        `\`/addassignment رقم_الكورس العنوان السؤال الإجابة_الصحيحة الموعد_النهائي\`\n\n` +
+        `\`/addassignment رقم_الكورس العنوان السؤال الإجابة_الصحيحة الموعد_النهائي\`\n` +
         `مثال:\n` +
         `\`/addassignment 1 "اختبار الوحدة الأولى" "ما هو تعريف البرمجة؟" "البرمجة هي عملية كتابة التعليمات" "2024-01-20"\``,
         { parse_mode: 'Markdown' }
@@ -41,7 +41,7 @@ export async function handleAddAssignment(ctx) {
     // Validate course ID
     if (isNaN(courseId) || courseId <= 0) {
       await ctx.reply(
-        `❌ *رقم الكورس غير صحيح*\n\n` +
+        `❌ *رقم الكورس غير صحيح*\n` +
         `يرجى إدخال رقم صحيح للكورس.`,
         { parse_mode: 'Markdown' }
       );
@@ -53,7 +53,7 @@ export async function handleAddAssignment(ctx) {
     
     if (assignmentId) {
       await ctx.reply(
-        `✅ *تم إضافة الواجب بنجاح*\n\n` +
+        `✅ *تم إضافة الواجب بنجاح*\n` +
         `🆔 *رقم الواجب:* ${assignmentId}\n` +
         `📚 *رقم الكورس:* ${courseId}\n` +
         `📝 *العنوان:* ${title}\n` +
@@ -64,7 +64,7 @@ export async function handleAddAssignment(ctx) {
       );
     } else {
       await ctx.reply(
-        `❌ *فشل في إضافة الواجب*\n\n` +
+        `❌ *فشل في إضافة الواجب*\n` +
         `حدث خطأ تقني، حاول مرة أخرى.`,
         { parse_mode: 'Markdown' }
       );
@@ -85,8 +85,8 @@ export async function handleUpdateAssignment(ctx) {
     // Check if user is admin
     if (!config.admin.userIds.includes(userId)) {
       await ctx.reply(
-        `🚫 *غير مسموح*\n\n` +
-        `هذا الأمر مخصص للمدراء فقط.\n\n` +
+        `🚫 *غير مسموح*\n` +
+        `هذا الأمر مخصص للمدراء فقط.\n` +
         `للمساعدة، تواصل مع ${config.admin.supportChannel}`,
         { parse_mode: 'Markdown' }
       );
@@ -97,10 +97,10 @@ export async function handleUpdateAssignment(ctx) {
     const args = messageText.split(' ');
     if (args.length < 4) {
       await ctx.reply(
-        `🔄 *كيفية تحديث واجب*\n\n` +
+        `🔄 *كيفية تحديث واجب*\n` +
         `الصيغة الصحيحة:\n` +
-        `\`/updateassignment رقم_الواجب الحقل القيمة_الجديدة\`\n\n` +
-        `الحقول المتاحة: title, question, correct_answer, deadline\n\n` +
+        `\`/updateassignment رقم_الواجب الحقل القيمة_الجديدة\`\n` +
+        `الحقول المتاحة: title, question, correct_answer, deadline\n` +
         `مثال:\n` +
         `\`/updateassignment 1 title "عنوان جديد"\``,
         { parse_mode: 'Markdown' }
@@ -115,7 +115,7 @@ export async function handleUpdateAssignment(ctx) {
     // Validate assignment ID
     if (isNaN(assignmentId) || assignmentId <= 0) {
       await ctx.reply(
-        `❌ *رقم الواجب غير صحيح*\n\n` +
+        `❌ *رقم الواجب غير صحيح*\n` +
         `يرجى إدخال رقم صحيح للواجب.`,
         { parse_mode: 'Markdown' }
       );
@@ -126,7 +126,7 @@ export async function handleUpdateAssignment(ctx) {
     const assignment = await getAssignment(assignmentId);
     if (!assignment) {
       await ctx.reply(
-        `❌ *الواجب غير موجود*\n\n` +
+        `❌ *الواجب غير موجود*\n` +
         `لم يتم العثور على واجب برقم ${assignmentId}.`,
         { parse_mode: 'Markdown' }
       );
@@ -138,7 +138,7 @@ export async function handleUpdateAssignment(ctx) {
     
     if (updateSuccess) {
       await ctx.reply(
-        `✅ *تم تحديث الواجب بنجاح*\n\n` +
+        `✅ *تم تحديث الواجب بنجاح*\n` +
         `🆔 *رقم الواجب:* ${assignmentId}\n` +
         `🔄 *الحقل المحدث:* ${field}\n` +
         `📝 *القيمة الجديدة:* ${newValue}`,
@@ -146,7 +146,7 @@ export async function handleUpdateAssignment(ctx) {
       );
     } else {
       await ctx.reply(
-        `❌ *فشل في تحديث الواجب*\n\n` +
+        `❌ *فشل في تحديث الواجب*\n` +
         `تأكد من صحة اسم الحقل أو حاول مرة أخرى.`,
         { parse_mode: 'Markdown' }
       );
@@ -167,8 +167,8 @@ export async function handleDeleteAssignment(ctx) {
     // Check if user is admin
     if (!config.admin.userIds.includes(userId)) {
       await ctx.reply(
-        `🚫 *غير مسموح*\n\n` +
-        `هذا الأمر مخصص للمدراء فقط.\n\n` +
+        `🚫 *غير مسموح*\n` +
+        `هذا الأمر مخصص للمدراء فقط.\n` +
         `للمساعدة، تواصل مع ${config.admin.supportChannel}`,
         { parse_mode: 'Markdown' }
       );
@@ -179,8 +179,8 @@ export async function handleDeleteAssignment(ctx) {
     const args = messageText.split(' ');
     if (args.length < 2) {
       await ctx.reply(
-        `🗑️ *كيفية حذف واجب*\n\n` +
-        `الصيغة الصحيحة: \`/deleteassignment رقم_الواجب\`\n\n` +
+        `🗑️ *كيفية حذف واجب*\n` +
+        `الصيغة الصحيحة: \`/deleteassignment رقم_الواجب\`\n` +
         `مثال: \`/deleteassignment 1\``,
         { parse_mode: 'Markdown' }
       );
@@ -192,7 +192,7 @@ export async function handleDeleteAssignment(ctx) {
     // Validate assignment ID
     if (isNaN(assignmentId) || assignmentId <= 0) {
       await ctx.reply(
-        `❌ *رقم الواجب غير صحيح*\n\n` +
+        `❌ *رقم الواجب غير صحيح*\n` +
         `يرجى إدخال رقم صحيح للواجب.`,
         { parse_mode: 'Markdown' }
       );
@@ -203,7 +203,7 @@ export async function handleDeleteAssignment(ctx) {
     const assignment = await getAssignment(assignmentId);
     if (!assignment) {
       await ctx.reply(
-        `❌ *الواجب غير موجود*\n\n` +
+        `❌ *الواجب غير موجود*\n` +
         `لم يتم العثور على واجب برقم ${assignmentId}.`,
         { parse_mode: 'Markdown' }
       );
@@ -215,14 +215,14 @@ export async function handleDeleteAssignment(ctx) {
     
     if (deleteSuccess) {
       await ctx.reply(
-        `✅ *تم حذف الواجب بنجاح*\n\n` +
+        `✅ *تم حذف الواجب بنجاح*\n` +
         `🆔 *رقم الواجب المحذوف:* ${assignmentId}\n` +
         `📝 *عنوان الواجب:* ${assignment.title}`,
         { parse_mode: 'Markdown' }
       );
     } else {
       await ctx.reply(
-        `❌ *فشل في حذف الواجب*\n\n` +
+        `❌ *فشل في حذف الواجب*\n` +
         `حدث خطأ تقني، حاول مرة أخرى.`,
         { parse_mode: 'Markdown' }
       );
@@ -244,8 +244,8 @@ export async function handleSubmit(ctx) {
     const args = messageText.split(' ');
     if (args.length < 3) {
       await ctx.reply(
-        `📋 *كيفية إرسال إجابة واجب*\n\n` +
-        `الصيغة الصحيحة: \`/submit رقم_الواجب الإجابة\`\n\n` +
+        `📋 *كيفية إرسال إجابة واجب*\n` +
+        `الصيغة الصحيحة: \`/submit رقم_الواجب الإجابة\`\n` +
         `مثال: \`/submit 1 البرمجة هي عملية كتابة التعليمات\``,
         { parse_mode: 'Markdown' }
       );
@@ -258,7 +258,7 @@ export async function handleSubmit(ctx) {
     // Validate assignment ID
     if (isNaN(assignmentId) || assignmentId <= 0) {
       await ctx.reply(
-        `❌ *رقم الواجب غير صحيح*\n\n` +
+        `❌ *رقم الواجب غير صحيح*\n` +
         `يرجى إدخال رقم صحيح للواجب.`,
         { parse_mode: 'Markdown' }
       );
@@ -270,17 +270,17 @@ export async function handleSubmit(ctx) {
     
     if (result.success) {
       await ctx.reply(
-        `📝 *تم إرسال إجابتك بنجاح*\n\n` +
-        `${result.message}\n\n` +
+        `📝 *تم إرسال إجابتك بنجاح*\n` +
+        `${result.message}\n` +
         `✅ *الإجابة الصحيحة:* ${result.correctAnswer}\n` +
-        `📊 *نقاطك:* ${result.score}/1\n\n` +
+        `📊 *نقاطك:* ${result.score}/1\n` +
         `شكراً لك على المشاركة! 🎉`,
         { parse_mode: 'Markdown' }
       );
     } else {
       await ctx.reply(
-        `❌ *فشل في إرسال الإجابة*\n\n` +
-        `${result.message}\n\n` +
+        `❌ *فشل في إرسال الإجابة*\n` +
+        `${result.message}\n` +
         `تأكد من رقم الواجب أو تواصل مع ${config.admin.supportChannel}`,
         { parse_mode: 'Markdown' }
       );

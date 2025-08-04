@@ -1,53 +1,100 @@
+// bot/commands/start.js
 import { addUser, isUserVerified } from '../utils/database.js';
 import { config } from '../../config.js';
 import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
 
 export async function handleStart(ctx) {
+  console.log('[START] Command invoked', { user: ctx.from, timestamp: new Date().toISOString() });
+
   try {
     const user = ctx.from;
-    const userId = user.id;
-    const username = user.username || '';
-    const firstName = user.first_name || '';
-
-    // Add user to database
-    await addUser(userId, username, firstName);
-
-    // Check if user is already verified
-    const verified = await isUserVerified(userId);
-
-    // Header
-    let message = `🤝 *${escapeMarkdownV2('مرحبًا بك في بوت معين المجتهدين')}*\n\n`;
-    message += '━━━━━━━━━━━━━━━━━━━━\n\n';
-
-    if (verified) {
-      message += `✅ ${escapeMarkdownV2('حسابك مفعل بالفعل!')}\n\n`;
-      message += `${escapeMarkdownV2('يمكنك الآن استخدام جميع ميزات البوت:')}\n\n`;
-    } else {
-      message += `🔒 ${escapeMarkdownV2('حسابك غير مفعل حاليًا')}\n\n`;
-      message += `${escapeMarkdownV2('لتفعيل حسابك واستخدام جميع الميزات، استخدم:')}\n\n`;
-      message += '`/verify كود_التفعيل`\n\n';
-      message += `💡 ${escapeMarkdownV2('للحصول على الكود، تواصل مع:')} ${escapeMarkdownV2(config.admin.supportChannel)}\n\n`;
+    if (!user || !user.id) {
+      console.error('[START] Error: ctx.from is undefined or missing id', { ctxFrom: ctx.from });
+      throw new Error('User information unavailable');
     }
 
-    message += `📚 *${escapeMarkdownV2('الميزات المتاحة:')}*\n\n`;
-    message += `• 📋 /profile - ${escapeMarkdownV2('عرض ملفك الشخصي')}\n`;
-    message += `• 📅 /attendance - ${escapeMarkdownV2('تسجيل الحضور')}\n`;
-    message += `• ❓ /faq - ${escapeMarkdownV2('الأسئلة الشائعة')}\n`;
-    message += `• 📝 /submit - ${escapeMarkdownV2('إرسال إجابة واجب')}\n\n`;
-    message += `📞 ${escapeMarkdownV2('للدعم والمساعدة:')} ${escapeMarkdownV2(config.admin.supportChannel)}\n\n`;
-    message += '━━━━━━━━━━━━━━━━━━━━\n\n';
-    message += '🤖 بوت معين المجتهدين';
+    const userId = user.id;
+    const username = user.username ? `@${user.username}` : 'غير متوفر';
+    const firstName = user.first_name || 'مستخدم';
+    console.log('[START] User info', { userId, username, firstName });
 
+    // Add user to database
+    console.log('[START] Adding user to database');
+    await addUser(userId, username, firstName);
+    console.log('[START] User added successfully');
+
+    // Check if user is already verified
+    console.log('[START] Checking user verification');
+    const userData = await isUserVerified(userId);
+    const verified = userData?.verified || false;
+    console.log('[START] Verification status', { verified });
+
+    // Build response message
+    let message = escapeMarkdownV2(
+      `🤝 *مرحبًا بك في بوت معين المجتهدين*\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n`
+    );
+
+    if (verified) {
+      message += escapeMarkdownV2(
+        `✅ حسابك مفعل بالفعل!\n\n` +
+        `يمكنك الآن استخدام جميع ميزات البوت:\n\n`
+      );
+    } else {
+      message += escapeMarkdownV2(
+        `🔒 حسابك غير مفعل حاليًا\n\n` +
+        `لتفعيل حسابك واستخدام جميع الميزات، استخدم:\n\n` +
+        `\`/verify كود_التفعيل\`\n\n` +
+        `💡 للحصول على الكود، تواصل مع: ${config.admin.supportChannel}\n\n`
+      );
+    }
+
+    message += escapeMarkdownV2(
+      `📚 *الميزات المتاحة:*\n\n` +
+      `• 📋 /profile \\- عرض ملفك الشخصي\n` +
+      `• 📅 /attendance \\- تسجيل الحضور\n` +
+      `• ❓ /faq \\- الأسئلة الشائعة\n` +
+      `• 📝 /submit \\- إرسال إجابة واجب\n\n` +
+      `📞 للدعم والمساعدة: ${config.admin.supportChannel}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `🤖 بوت معين المجتهدين`
+    );
+
+    console.log('[START] Sending response', { message });
     await ctx.reply(message, {
       parse_mode: 'MarkdownV2',
-      disable_web_page_preview: true
+      disable_web_page_preview: true,
     });
+    console.log('[START] Response sent successfully');
   } catch (error) {
+    console.error('[START] Error in handleStart:', {
+      error: error.message,
+      stack: error.stack,
+      user: ctx.from,
+      timestamp: new Date().toISOString(),
+    });
+
     // Log error to file
     try {
       const fs = await import('fs');
-      fs.appendFileSync('./data/error.log', `[START] ${new Date().toISOString()}\n${error.stack || error}\n`);
-    } catch (e) {}
-    await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${escapeMarkdownV2(config.admin.supportChannel)}`, { parse_mode: 'MarkdownV2' });
+      fs.appendFileSync(
+        './data/error.log',
+        `[START] ${new Date().toISOString()}\n${error.stack || error}\n`
+      );
+      console.log('[START] Error logged to file');
+    } catch (fileError) {
+      console.error('[START] Error logging to file:', {
+        error: fileError.message,
+        stack: fileError.stack,
+      });
+    }
+
+    await ctx.reply(
+      escapeMarkdownV2(
+        `❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`
+      ),
+      { parse_mode: 'MarkdownV2' }
+    );
+    console.log('[START] Error response sent to user');
   }
 }

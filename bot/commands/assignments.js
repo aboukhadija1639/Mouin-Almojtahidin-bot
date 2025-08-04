@@ -30,10 +30,10 @@ export async function handleAssignments(ctx) {
     });
     let message = `📝 *${escapeMarkdownV2('قائمة الواجبات المتاحة')}*\n━━━━━━━━━━━━━━━━━━━━`;
     if (active.length > 0) {
-      message += `\n🟢 *${escapeMarkdownV2('الواجبات النشطة:')}*\n${active.join('\n\n')}\n`;
+      message += `\n🟢 *${escapeMarkdownV2('الواجبات النشطة:')}*\n${active.join('\n')}\n`;
     }
     if (past.length > 0) {
-      message += `\n🔴 *${escapeMarkdownV2('الواجبات المنتهية:')}*\n${past.join('\n\n')}\n`;
+      message += `\n🔴 *${escapeMarkdownV2('الواجبات المنتهية:')}*\n${past.join('\n')}\n`;
     }
     message += `━━━━━━━━━━━━━━━━━━━━\n`;
     message += `📊 ${escapeMarkdownV2('إجمالي الواجبات:')} ${assignments.length}\n`;

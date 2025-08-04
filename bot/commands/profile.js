@@ -1,60 +1,51 @@
-import { getUserInfo, getUserAttendance, getUserSubmissions } from '../utils/database.js';
+import { getUserInfo } from '../utils/database.js';
 import { config } from '../../config.js';
+import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
 
 export async function handleProfile(ctx) {
   try {
     const userId = ctx.from.id;
+    console.log(`Processing /profile command for user: ${userId}`);
 
-    // Get user information from database
+    console.log(`Fetching user info for user: ${userId}`);
     const userInfo = await getUserInfo(userId);
-    
     if (!userInfo) {
-      await ctx.reply(
-        `❌ *لم يتم العثور على ملفك الشخصي*\\n\\n` +
-        `يرجى استخدام /start لتسجيل حسابك أولاً\\.`,
-        { parse_mode: 'MarkdownV2' }
-      );
+      console.log(`No user info found for user: ${userId}`);
+      const response = 
+        `❌ *${escapeMarkdownV2('لم يتم العثور على حسابك')}*\n\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\n${escapeMarkdownV2('استخدم /start للتسجيل')}\\.\n💡 ${escapeMarkdownV2('للمساعدة:')} ${escapeMarkdownV2(config.admin.supportChannel)}`;
+      console.log(`Sending no user response for user: ${userId}: ${response}`);
+      await ctx.reply(response, { parse_mode: 'MarkdownV2' });
+      console.log(`Successfully sent no user response for user: ${userId}`);
       return;
     }
 
-    // Get attendance and submission counts
-    const attendanceCount = await getUserAttendance(userId);
-    const submissionsCount = await getUserSubmissions(userId);
-
-    // Format join date
-    const joinDate = new Date(userInfo.join_date).toLocaleDateString('ar-SA');
-
-    // Build profile message with proper MarkdownV2 escaping
-    let message = `👤 *ملفك الشخصي*\\n\\n`;
+    console.log(`User info: ${JSON.stringify(userInfo)}`);
+    const response = 
+      `👤 *${escapeMarkdownV2('ملفك الشخصي')}*\n\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\n` +
+      `🆔 *${escapeMarkdownV2('معرف المستخدم:')}* ${userInfo.user_id}\n` +
+      `📛 *${escapeMarkdownV2('الاسم:')}* ${escapeMarkdownV2(userInfo.first_name || 'غير متوفر')}\n` +
+      `📧 *${escapeMarkdownV2('اسم المستخدم:')}* ${escapeMarkdownV2(userInfo.username || 'غير متوفر')}\n` +
+      `✅ *${escapeMarkdownV2('الحالة:')}* ${userInfo.is_verified ? escapeMarkdownV2('مفعل') : escapeMarkdownV2('غير مفعل')}\n` +
+      `🔔 *${escapeMarkdownV2('التذكيرات:')}* ${userInfo.reminders_enabled ? escapeMarkdownV2('مفعلة') : escapeMarkdownV2('معطلة')}\n` +
+      `💡 ${escapeMarkdownV2('للمساعدة:')} ${escapeMarkdownV2(config.admin.supportChannel)}`;
     
-    // Escape special characters for MarkdownV2
-    const escapedName = userInfo.first_name.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
-    const escapedUsername = userInfo.username ? userInfo.username.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&') : 'غير محدد';
-    
-    message += `📝 *المعلومات الأساسية:*\\n`;
-    message += `• الاسم: ${escapedName}\\n`;
-    message += `• المعرف: ${userInfo.username ? '@' + escapedUsername : 'غير محدد'}\\n`;
-    message += `• رقم المستخدم: \`${userInfo.user_id}\`\\n`;
-    message += `• تاريخ الانضمام: ${joinDate}\\n\\n`;
-    
-    message += `✅ *حالة الحساب:*\\n`;
-    message += `• التفعيل: ${userInfo.is_verified ? '✅ مفعل' : '❌ غير مفعل'}\\n`;
-    message += `• التذكيرات: ${userInfo.reminders_enabled ? '🔔 مفعلة' : '🔕 معطلة'}\\n\\n`;
-    
-    message += `📊 *الإحصائيات:*\\n`;
-    message += `• عدد الحضور: ${attendanceCount} درس\\n`;
-    message += `• الواجبات المرسلة: ${submissionsCount} واجب\\n\\n`;
-    
-    message += `━━━━━━━━━━━━━━━━━━━━\\n\\n`;
-    message += `💡 للمساعدة: ${config.admin.supportChannel.replace(/@/g, '\\@')}`;
-
-    await ctx.reply(message, { 
-      parse_mode: 'MarkdownV2',
-      disable_web_page_preview: true 
-    });
+    console.log(`Sending profile response for user: ${userId}: ${response}`);
+    await ctx.reply(response, { parse_mode: 'MarkdownV2' });
+    console.log(`Successfully sent profile response for user: ${userId}`);
 
   } catch (error) {
-    console.error('خطأ في أمر /profile:', error);
-    await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`);
+    console.error(`Error in /profile command for user ${ctx.from.id}:`, {
+      message: error.message,
+      stack: error.stack,
+      response: error.response ? {
+        status: error.response.status,
+        data: error.response.data,
+      } : 'No response data',
+    });
+    const response = 
+      `❌ ${escapeMarkdownV2('حدث خطأ، حاول مرة أخرى أو تواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)}`;
+    console.log(`Sending error response for user: ${ctx.from.id}: ${response}`);
+    await ctx.reply(response, { parse_mode: 'MarkdownV2' });
+    console.log(`Successfully sent error response for user: ${ctx.from.id}`);
   }
 }

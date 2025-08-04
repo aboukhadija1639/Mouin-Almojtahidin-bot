@@ -32,15 +32,24 @@ import { handleSettings } from './bot/commands/settings.js';
 
 // Validate environment variables
 function validateConfig() {
+  console.log('Validating configuration...');
   if (!config.botToken) {
-    console.error('❌ BOT_TOKEN غير موجود في متغيرات البيئة');
+    console.error('❌ BOT_TOKEN missing in environment variables');
+    logError(new Error('BOT_TOKEN missing'), 'CONFIG_VALIDATION');
     process.exit(1);
   }
   
   if (config.admin.userIds.length === 0) {
-    console.warn('⚠️ ADMIN_USER_IDS غير محدد، لن تعمل الأوامر الإدارية');
+    console.warn('⚠️ ADMIN_USER_IDS not specified, admin commands will be disabled');
+    logActivity('ADMIN_USER_IDS not specified');
   }
   
+  if (!config.admin.chatId) {
+    console.warn('⚠️ ADMIN_CHAT_ID not specified, startup/shutdown notifications disabled');
+    logActivity('ADMIN_CHAT_ID not specified');
+  }
+  
+  console.log('✅ Configuration validated successfully');
   logActivity('تم التحقق من متغيرات البيئة بنجاح');
 }
 
@@ -48,29 +57,105 @@ function validateConfig() {
 async function clearUpdatesWithRetry(bot, maxRetries = 3) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      // Delete webhook
-      await bot.telegram.deleteWebhook();
+      console.log(`Attempting to delete webhook (Attempt ${attempt}/${maxRetries})`);
+      const webhookResponse = await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+      console.log('Webhook deletion response:', webhookResponse);
       logActivity('تم حذف الـ webhook');
       
-      // Clear pending updates
+      console.log('Checking for pending updates...');
       const updates = await bot.telegram.getUpdates({ timeout: 1 });
+      console.log(`Found ${updates.length} pending updates`);
       if (updates.length > 0) {
         logActivity(`تم العثور على ${updates.length} تحديث معلق، سيتم تنظيفها`);
         await bot.telegram.getUpdates({ 
           offset: updates[updates.length - 1].update_id + 1,
           timeout: 1 
         });
+        console.log('Pending updates cleared');
       }
       
+      console.log('✅ Updates cleared successfully');
       logActivity('تم تنظيف التحديثات بنجاح');
-      return;
+      return true;
     } catch (error) {
+      console.error(`❌ Failed to delete webhook or clear updates (Attempt ${attempt}):`, {
+        message: error.message,
+        stack: error.stack,
+        response: error.response ? {
+          status: error.response.status,
+          data: error.response.data,
+        } : 'No response data',
+      });
       logError(error, `CLEAR_UPDATES_ATTEMPT_${attempt}`);
-      if (attempt === maxRetries) {
-        logError(new Error('فشل في تنظيف التحديثات بعد عدة محاولات'), 'CLEAR_UPDATES_FAILED');
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000;
+        console.log(`Retrying in ${delay/1000} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       } else {
-        // Wait before retry
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.error('❌ Max retries reached for clearing updates');
+        logError(new Error('Failed to clear updates after max retries'), 'CLEAR_UPDATES_FAILED');
+        return false;
+      }
+    }
+  }
+}
+
+// Manual polling fallback
+async function manualPolling(bot, timeout = 10000) {
+  try {
+    console.log('Attempting manual polling...');
+    const updates = await bot.telegram.getUpdates({ timeout: Math.floor(timeout / 1000) });
+    console.log(`Manual polling retrieved ${updates.length} updates`);
+    if (updates.length > 0) {
+      logActivity(`Manual polling found ${updates.length} updates`);
+      await bot.handleUpdate(updates[updates.length - 1]);
+      console.log('Processed latest update');
+    }
+    return true;
+  } catch (error) {
+    console.error('❌ Manual polling failed:', {
+      message: error.message,
+      stack: error.stack,
+      response: error.response ? {
+        status: error.response.status,
+        data: error.response.data,
+      } : 'No response data',
+    });
+    logError(error, 'MANUAL_POLLING');
+    return false;
+  }
+}
+
+// Launch bot with retry logic
+async function launchBotWithRetry(bot, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Attempting to launch bot (Attempt ${attempt}/${maxRetries})`);
+      await Promise.race([
+        bot.launch({ dropPendingUpdates: true }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Bot launch timed out after 60 seconds')), 60000))
+      ]);
+      console.log('✅ Bot launched successfully');
+      return true;
+    } catch (error) {
+      console.error(`❌ Failed to launch bot (Attempt ${attempt}):`, {
+        message: error.message,
+        stack: error.stack,
+        response: error.response ? {
+          status: error.response.status,
+          data: error.response.data,
+        } : 'No response data',
+      });
+      logError(error, `BOT_LAUNCH_ATTEMPT_${attempt}`);
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 5000; // Increased delay: 5s, 10s, 20s
+        console.log(`Retrying launch in ${delay/1000} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        console.error('❌ Max retries reached for bot launch, attempting manual polling...');
+        logError(new Error('Failed to launch bot after max retries'), 'BOT_LAUNCH_FAILED');
+        const manualSuccess = await manualPolling(bot);
+        return manualSuccess;
       }
     }
   }
@@ -79,72 +164,80 @@ async function clearUpdatesWithRetry(bot, maxRetries = 3) {
 // Initialize bot
 async function initBot() {
   try {
-    // Validate configuration
+    console.log('Starting bot initialization...');
     validateConfig();
     
-    // Create bot instance
+    console.log('Creating Telegraf bot instance...');
     const bot = new Telegraf(config.botToken);
     
-    // Clear webhooks and updates
-    await clearUpdatesWithRetry(bot);
+    console.log('Fetching bot info...');
+    const botInfo = await bot.telegram.getMe();
+    console.log('Bot info:', botInfo);
     
-    // Initialize database
+    console.log('Clearing webhooks and updates...');
+    const updatesCleared = await clearUpdatesWithRetry(bot);
+    if (!updatesCleared) {
+      console.warn('⚠️ Failed to clear updates, proceeding in polling mode');
+      logActivity('Failed to clear updates, proceeding in polling mode');
+    }
+    
+    console.log('Initializing database...');
     await initDatabase();
+    console.log('✅ Database initialized');
     
-    // Apply middlewares
+    console.log('Applying middlewares...');
     bot.use(loggerMiddleware());
     bot.use(rateLimiterMiddleware());
     bot.use(verifyMiddleware());
+    console.log('✅ Middlewares applied');
     
-    // Register commands
+    console.log('Registering commands...');
     registerCommands(bot);
+    console.log('✅ Commands registered');
     
-    // Initialize reminders
+    console.log('Initializing reminders...');
     initReminders(bot);
+    console.log('✅ Reminders initialized');
     
-    // Handle shutdown gracefully
+    console.log('Setting up shutdown handlers...');
     setupShutdownHandlers(bot);
+    console.log('✅ Shutdown handlers set');
     
-    // Start bot
-    await bot.launch();
-    
-    logBotStartup();
-    console.log('🚀 بوت معين المجتهدين يعمل بنجاح!');
-    console.log(`📊 معرف البوت: @${bot.botInfo.username}`);
-    console.log(`👥 عدد المدراء: ${config.admin.userIds.length}`);
-    
-    // Send startup notification to admin
-    if (config.admin.chatId) {
-      try {
-        const escapedUsername = bot.botInfo.username.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
-        const startupMessage = `🚀 *تم تشغيل البوت بنجاح*\\n\\n` +
-          `🤖 البوت: @${escapedUsername}\\n` +
-          `⏰ الوقت: ${new Date().toLocaleString('ar-SA')}\\n` +
-          `📊 حالة قاعدة البيانات: ✅ متصلة\\n` +
-          `🔔 نظام التذكيرات: ✅ مفعل`;
-        
-        await bot.telegram.sendMessage(config.admin.chatId, startupMessage, { parse_mode: 'MarkdownV2' });
-      } catch (notifyError) {
-        logError(notifyError, 'STARTUP_NOTIFICATION');
-      }
+    console.log('Launching bot...');
+    const launched = await launchBotWithRetry(bot);
+    if (!launched) {
+      console.warn('⚠️ Bot failed to launch, but initialization completed. Test commands manually.');
+      logActivity('Bot failed to launch, initialization completed');
+    } else {
+      console.log('🚀 بوت معين المجتهدين يعمل بنجاح!');
+      console.log(`📊 معرف البوت: @${botInfo.username}`);
+      console.log(`👥 عدد المدراء: ${config.admin.userIds.length}`);
+      logBotStartup();
     }
     
     return bot;
   } catch (error) {
+    console.error('❌ فشل في تشغيل البوت:', {
+      message: error.message,
+      stack: error.stack,
+      response: error.response ? {
+        status: error.response.status,
+        data: error.response.data,
+      } : 'No response data',
+    });
     logError(error, 'BOT_INIT');
-    console.error('❌ فشل في تشغيل البوت:', error);
     process.exit(1);
   }
 }
 
 // Register all bot commands
 function registerCommands(bot) {
-  // Public commands (no verification required)
+  console.log('Registering public commands...');
   bot.command('start', handleStart);
   bot.command('verify', handleVerify);
   bot.command('help', handleHelp);
   
-  // User commands (verification required)
+  console.log('Registering user commands...');
   bot.command('faq', handleFaq);
   bot.command('profile', handleProfile);
   bot.command('courses', handleCourses);
@@ -156,7 +249,7 @@ function registerCommands(bot) {
   bot.command('feedback', handleFeedback);
   bot.command('settings', handleSettings);
   
-  // Admin commands (verification + admin privileges required)
+  console.log('Registering admin commands...');
   bot.command('stats', requireAdmin, handleStats);
   bot.command('publish', requireAdmin, handlePublish);
   bot.command('addassignment', requireAdmin, handleAddAssignment);
@@ -166,18 +259,16 @@ function registerCommands(bot) {
   bot.command('export', requireAdmin, handleExport);
   bot.command('viewfeedback', requireAdmin, handleViewFeedback);
   
-  // Handle unknown commands
+  console.log('Registering unknown command handler...');
   bot.on('text', async (ctx) => {
     const messageText = ctx.message.text;
     
-    // Skip if it's not a command
     if (!messageText.startsWith('/')) {
       return;
     }
     
     const command = messageText.split(' ')[0].toLowerCase();
-    
-    // List of known commands
+    console.log(`Received command: ${command}`);
     const knownCommands = [
       '/start', '/verify', '/help', '/faq', '/profile', '/courses', 
       '/assignments', '/attendance', '/reminders', '/submit', '/addreminder',
@@ -186,13 +277,15 @@ function registerCommands(bot) {
     ];
     
     if (!knownCommands.includes(command)) {
+      console.log(`Unknown command received: ${command}`);
       await ctx.reply(
         `❓ *أمر غير معروف*\\n\\n` +
         `الأوامر المتاحة:\\n\\n` +
         `🌐 *الأوامر العامة:*\\n` +
         `• \`/start\` \\- بدء استخدام البوت\\n` +
         `• \`/verify\` \\- تفعيل الحساب\\n` +
-        `• \`/help\` \\- دليل المساعدة الشامل\\n\\n` +
+        `• \`/help\` \\- دليل المساعدة الشامل\\n` +
+        `• \`/faq\` \\- الأسئلة الشائعة\\n\\n` +
         `👤 *أوامر المستخدم:*\\n` +
         `• \`/profile\` \\- عرض الملف الشخصي\\n` +
         `• \`/courses\` \\- قائمة الدروس\\n` +
@@ -202,8 +295,7 @@ function registerCommands(bot) {
         `• \`/addreminder\` \\- إضافة تذكير مخصص\\n` +
         `• \`/submit\` \\- إرسال إجابة واجب\\n` +
         `• \`/feedback\` \\- إرسال تغذية راجعة\\n` +
-        `• \`/settings\` \\- إعدادات المستخدم\\n` +
-        `• \`/faq\` \\- الأسئلة الشائعة\\n\\n` +
+        `• \`/settings\` \\- إعدادات المستخدم\\n\\n` +
         `⚙️ *أوامر المدير:*\\n` +
         `• \`/stats\` \\- عرض الإحصائيات\\n` +
         `• \`/publish\` \\- نشر إعلان\\n` +
@@ -218,70 +310,70 @@ function registerCommands(bot) {
     }
   });
   
+  console.log('✅ All bot commands registered');
   logActivity('تم تسجيل جميع أوامر البوت');
 }
 
 // Setup graceful shutdown handlers
 function setupShutdownHandlers(bot) {
   const gracefulShutdown = async (signal) => {
-    console.log(`\n📴 تم استقبال إشارة ${signal}، جاري إيقاف البوت...`);
+    console.log(`\n📴 Received ${signal}, shutting down bot...`);
     
     try {
-      // Stop bot
+      console.log('Stopping bot...');
       await bot.stop(signal);
       logActivity(`تم إيقاف البوت بسبب ${signal}`);
       
-      // Cleanup reminders
+      console.log('Cleaning up reminders...');
       cleanupReminders();
       
-      // Close database
+      console.log('Closing database...');
       await closeDatabase();
       
-      // Send shutdown notification to admin
-      if (config.admin.chatId) {
-        try {
-          const shutdownMessage = `🛑 *تم إيقاف البوت*\\n\\n` +
-            `⏰ الوقت: ${new Date().toLocaleString('ar-SA')}\\n` +
-            `📊 السبب: ${signal}`;
-          
-          await bot.telegram.sendMessage(config.admin.chatId, shutdownMessage, { parse_mode: 'MarkdownV2' });
-        } catch (notifyError) {
-          logError(notifyError, 'SHUTDOWN_NOTIFICATION');
-        }
-      }
-      
+      console.log('✅ Bot shutdown completed');
       logBotShutdown();
-      console.log('✅ تم إيقاف البوت بنجاح');
       process.exit(0);
     } catch (error) {
+      console.error('❌ Error during bot shutdown:', {
+        message: error.message,
+        stack: error.stack,
+      });
       logError(error, 'GRACEFUL_SHUTDOWN');
-      console.error('❌ خطأ أثناء إيقاف البوت:', error);
       process.exit(1);
     }
   };
   
-  // Handle different shutdown signals
+  console.log('Setting up process event listeners...');
   process.once('SIGINT', () => gracefulShutdown('SIGINT'));
   process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
   
-  // Handle uncaught exceptions
   process.on('uncaughtException', (error) => {
+    console.error('❌ Uncaught Exception:', {
+      message: error.message,
+      stack: error.stack,
+    });
     logError(error, 'UNCAUGHT_EXCEPTION');
-    console.error('❌ خطأ غير معالج:', error);
     gracefulShutdown('UNCAUGHT_EXCEPTION');
   });
   
-  // Handle unhandled promise rejections
   process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled Rejection at:', promise, 'Reason:', reason);
     logError(new Error(`Unhandled Rejection: ${reason}`), 'UNHANDLED_REJECTION');
-    console.error('❌ رفض غير معالج في:', promise, 'السبب:', reason);
     gracefulShutdown('UNHANDLED_REJECTION');
   });
 }
 
 // Start the bot
+console.log('Starting bot...');
 initBot().catch((error) => {
+  console.error('❌ Failed to start bot:', {
+    message: error.message,
+    stack: error.stack,
+    response: error.response ? {
+      status: error.response.status,
+      data: error.response.data,
+    } : 'No response data',
+  });
   logError(error, 'MAIN');
-  console.error('❌ فشل في بدء تشغيل البوت:', error);
   process.exit(1);
 });

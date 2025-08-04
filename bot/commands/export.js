@@ -10,9 +10,9 @@ export async function handleExport(ctx) {
     // Check if user is admin
     if (!config.admin.userIds.includes(userId)) {
       await ctx.reply(
-        `🚫 *غير مسموح*\\n\\n` +
-        `هذا الأمر مخصص للمدراء فقط\\.\\n\\n` +
-        `للمساعدة، تواصل مع ${config.admin.supportChannel.replace(/@/g, '\\@')}`,
+        `🚫 *غير مسموح*\n` +
+        `هذا الأمر مخصص للمدراء فقط\n.\n` +
+        `للمساعدة، تواصل مع ${config.admin.supportChannel.replace(/@/g, '\n@')}`,
         { parse_mode: 'MarkdownV2' }
       );
       return;
@@ -22,16 +22,16 @@ export async function handleExport(ctx) {
     const args = messageText.split(' ');
     if (args.length < 2) {
       await ctx.reply(
-        `📊 *تصدير البيانات*\\n\\n` +
-        `📝 *الصيغة الصحيحة:*\\n` +
-        `\`/export نوع_البيانات\`\\n\\n` +
-        `📋 *الأنواع المتاحة:*\\n` +
-        `• \`attendance\` \\- بيانات الحضور\\n` +
-        `• \`assignments\` \\- بيانات الواجبات\\n\\n` +
-        `💡 *أمثلة:*\\n` +
-        `• \`/export attendance\`\\n` +
-        `• \`/export assignments\`\\n\\n` +
-        `📄 سيتم إرسال البيانات بتنسيق CSV\\.`,
+        `📊 *تصدير البيانات*\n` +
+        `📝 *الصيغة الصحيحة:*\n` +
+        `\`/export نوع_البيانات\`\n` +
+        `📋 *الأنواع المتاحة:*\n` +
+        `• \`attendance\` \n- بيانات الحضور\n` +
+        `• \`assignments\` \n- بيانات الواجبات\n` +
+        `💡 *أمثلة:*\n` +
+        `• \`/export attendance\`\n` +
+        `• \`/export assignments\`\n` +
+        `📄 سيتم إرسال البيانات بتنسيق CSV\n.`,
         { parse_mode: 'MarkdownV2' }
       );
       return;
@@ -42,10 +42,10 @@ export async function handleExport(ctx) {
     // Validate export type
     if (!['attendance', 'assignments'].includes(exportType)) {
       await ctx.reply(
-        `❌ *نوع البيانات غير صحيح*\\n\\n` +
-        `📋 *الأنواع المتاحة:*\\n` +
-        `• \`attendance\` \\- بيانات الحضور\\n` +
-        `• \`assignments\` \\- بيانات الواجبات\\n\\n` +
+        `❌ *نوع البيانات غير صحيح*\n` +
+        `📋 *الأنواع المتاحة:*\n` +
+        `• \`attendance\` \n- بيانات الحضور\n` +
+        `• \`assignments\` \n- بيانات الواجبات\n` +
         `💡 مثال: \`/export attendance\``,
         { parse_mode: 'MarkdownV2' }
       );
@@ -97,9 +97,9 @@ export async function handleExport(ctx) {
     if (!data || data.length === 0) {
       const escapedType = escapeMarkdownV2(exportType);
       await ctx.reply(
-        `📭 *لا توجد بيانات للتصدير*\\n\\n` +
-        `لا توجد بيانات من نوع \`${escapedType}\` للتصدير\\.\\n\\n` +
-        `💡 تأكد من وجود بيانات في النظام أولاً\\.`,
+        `📭 *لا توجد بيانات للتصدير*\n` +
+        `لا توجد بيانات من نوع \`${escapedType}\` للتصدير\n.\n` +
+        `💡 تأكد من وجود بيانات في النظام أولاً\n.`,
         { parse_mode: 'MarkdownV2' }
       );
       return;
@@ -115,11 +115,11 @@ export async function handleExport(ctx) {
     await ctx.replyWithDocument(
       { source: buffer, filename: filename },
       {
-        caption: `📊 *تم تصدير البيانات بنجاح*\\n\\n` +
-          `📄 *اسم الملف:* ${escapedFilename}\\n` +
-          `📊 *عدد السجلات:* ${escapedCount}\\n` +
-          `📅 *تاريخ التصدير:* ${escapeMarkdownV2(new Date().toLocaleDateString('ar-SA'))}\\n\\n` +
-          `💡 يمكنك فتح الملف في Excel أو Google Sheets\\.`,
+        caption: `📊 *تم تصدير البيانات بنجاح*\n` +
+          `📄 *اسم الملف:* ${escapedFilename}\n` +
+          `📊 *عدد السجلات:* ${escapedCount}\n` +
+          `📅 *تاريخ التصدير:* ${escapeMarkdownV2(new Date().toLocaleDateString('ar-SA'))}\n` +
+          `💡 يمكنك فتح الملف في Excel أو Google Sheets\n.`,
         parse_mode: 'MarkdownV2'
       }
     );
@@ -127,7 +127,7 @@ export async function handleExport(ctx) {
   } catch (error) {
     console.error('خطأ في أمر /export:', error);
     await ctx.reply(
-      `❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel.replace(/@/g, '\\@')}`,
+      `❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel.replace(/@/g, '\n@')}`,
       { parse_mode: 'MarkdownV2' }
     );
   }

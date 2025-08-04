@@ -29,8 +29,8 @@ export async function handleCourses(ctx) {
 
     if (allLessons.length === 0) {
       await ctx.reply(
-        `📚 *قائمة الدروس*\\n\\n` +
-        `لا توجد دروس مجدولة حالياً\\.\n\n` +
+        `📚 *قائمة الدروس*\n\n` +
+        `لا توجد دروس مجدولة حالياً\\.\n` +
         `💡 للمساعدة: ${config.admin.supportChannel.replace(/@/g, '\\@')}`,
         { 
           parse_mode: 'MarkdownV2',
@@ -48,7 +48,7 @@ export async function handleCourses(ctx) {
     });
 
     // Build courses message
-    let message = `📚 *قائمة الدروس المجدولة*\\n\\n`;
+    let message = `📚 *قائمة الدروس المجدولة*\n\n`;
     
     let upcomingLessons = [];
     let pastLessons = [];
@@ -62,9 +62,9 @@ export async function handleCourses(ctx) {
       // Escape special characters for MarkdownV2
       const escapedTitle = lesson.title.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
       
-      const lessonInfo = `${index + 1}\\. *${escapedTitle}*\\n` +
-        `   📅 التاريخ: ${formattedDate}\\n` +
-        `   ⏰ الوقت: ${formattedTime}\\n`;
+      const lessonInfo = `${index + 1}\\. *${escapedTitle}*\n` +
+        `   📅 التاريخ: ${formattedDate}\n` +
+        `   ⏰ الوقت: ${formattedTime}\n`;
         
       if (lessonDate > now) {
         upcomingLessons.push(lessonInfo);
@@ -75,21 +75,21 @@ export async function handleCourses(ctx) {
 
     // Add upcoming lessons
     if (upcomingLessons.length > 0) {
-      message += `🔮 *الدروس القادمة:*\\n\\n`;
-      message += upcomingLessons.join('\\n');
-      message += `\\n`;
+      message += `🔮 *الدروس القادمة:*\n\n`;
+      message += upcomingLessons.join('\n');
+      message += `\n`;
     }
 
     // Add past lessons
     if (pastLessons.length > 0) {
-      message += `📋 *الدروس السابقة:*\\n\\n`;
-      message += pastLessons.join('\\n');
-      message += `\\n`;
+      message += `📋 *الدروس السابقة:*\n\n`;
+      message += pastLessons.join('\n');
+      message += `\n`;
     }
 
-    message += `━━━━━━━━━━━━━━━━━━━━\\n\\n`;
-    message += `📊 إجمالي الدروس: ${allLessons.length}\\n`;
-    message += `🔔 استخدم /attendance لتسجيل حضورك بعد الدرس\\n\\n`;
+    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    message += `📊 إجمالي الدروس: ${allLessons.length}\n`;
+    message += `🔔 استخدم /attendance لتسجيل حضورك بعد الدرس\n\n`;
     message += `💡 للمساعدة: ${config.admin.supportChannel.replace(/@/g, '\\@')}`;
 
     await ctx.reply(message, { 

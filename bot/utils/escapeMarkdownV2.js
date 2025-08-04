@@ -1,12 +1,10 @@
-// Utility to escape all MarkdownV2 reserved characters for Telegram
-// See: https://core.telegram.org/bots/api#markdownv2-formatting
-
+// bot/utils/escapeMarkdownV2.js
 export function escapeMarkdownV2(text) {
-  if (typeof text !== 'string') return '';
-  // List of all MarkdownV2 special characters
-  // _ * [ ] ( ) ~ ` > # + - = | { } . !
-  // Also escape backslash itself first
-  return text
-    .replace(/\\/g, '\\\\') // Escape backslash
-    .replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
+  if (typeof text !== 'string') return text;
+  const specialChars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'];
+  let escaped = text;
+  specialChars.forEach(char => {
+    escaped = escaped.replace(new RegExp(`\\${char}`, 'g'), `\\${char}`);
+  });
+  return escaped;
 }

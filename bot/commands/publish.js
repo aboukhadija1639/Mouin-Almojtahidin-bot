@@ -9,8 +9,8 @@ export async function handlePublish(ctx) {
     // Check if user is admin
     if (!config.admin.userIds.includes(userId)) {
       await ctx.reply(
-        `🚫 *غير مسموح*\n\n` +
-        `هذا الأمر مخصص للمدراء فقط.\n\n` +
+        `🚫 *غير مسموح*\n` +
+        `هذا الأمر مخصص للمدراء فقط.\n` +
         `للمساعدة، تواصل مع ${config.admin.supportChannel}`,
         { parse_mode: 'Markdown' }
       );
@@ -21,9 +21,9 @@ export async function handlePublish(ctx) {
     const args = messageText.split(' ');
     if (args.length < 2) {
       await ctx.reply(
-        `📢 *كيفية نشر إعلان*\n\n` +
-        `الصيغة الصحيحة: \`/publish نص_الإعلان\`\n\n` +
-        `مثال: \`/publish مرحباً بكم في الدرس الجديد\`\n\n` +
+        `📢 *كيفية نشر إعلان*\n` +
+        `الصيغة الصحيحة: \`/publish نص_الإعلان\`\n` +
+        `مثال: \`/publish مرحباً بكم في الدرس الجديد\`\n` +
         `💡 سيتم إرسال الإعلان للمجموعة وللمستخدمين المفعلين.`,
         { parse_mode: 'Markdown' }
       );
@@ -38,7 +38,7 @@ export async function handlePublish(ctx) {
     
     if (!announcementId) {
       await ctx.reply(
-        `❌ *فشل في حفظ الإعلان*\n\n` +
+        `❌ *فشل في حفظ الإعلان*\n` +
         `حدث خطأ تقني، حاول مرة أخرى.`,
         { parse_mode: 'Markdown' }
       );
@@ -46,7 +46,7 @@ export async function handlePublish(ctx) {
     }
 
     // Format announcement message
-    const announcementMessage = `📢 *إعلان جديد*\n\n${announcementContent}\n\n━━━━━━━━━━━━━━━━━━━━\n🤖 بوت معين المجتهدين`;
+    const announcementMessage = `📢 *إعلان جديد*\n${announcementContent}\n━━━━━━━━━━━━━━━━━━━━\n🤖 بوت معين المجتهدين`;
 
     let successCount = 0;
     let failCount = 0;
@@ -88,7 +88,7 @@ export async function handlePublish(ctx) {
     }
 
     // Send confirmation to admin
-    let confirmationMessage = `✅ *تم نشر الإعلان بنجاح*\n\n`;
+    let confirmationMessage = `✅ *تم نشر الإعلان بنجاح*\n`;
     confirmationMessage += `📊 *تفاصيل الإرسال:*\n`;
     confirmationMessage += `• تم الإرسال بنجاح: ${successCount}\n`;
     if (failCount > 0) {

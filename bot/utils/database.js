@@ -2,6 +2,8 @@ import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import * as fs from 'fs';
 import { config } from '../../config.js';
+import { promisify } from 'util';
+
 
 let db = null;
 
@@ -513,6 +515,12 @@ export async function deleteCourse(courseId) {
   }
 }
 
+// get db
+function getDb() {
+  return db;
+}
+
+
 export async function getCourses() {
   try {
     const courses = await db.all(`
@@ -686,4 +694,4 @@ export async function closeDatabase() {
   }
 }
 
-export { db };
+export { db, getDb};

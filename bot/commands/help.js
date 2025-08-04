@@ -1,61 +1,88 @@
+// bot/commands/help.js
 import { isUserVerified, isUserAdmin } from '../utils/database.js';
 import { config } from '../../config.js';
 import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
 
 export async function handleHelp(ctx) {
   try {
+    console.log('Processing /help command for user:', ctx.from.id);
     const userId = ctx.from.id;
     const verified = await isUserVerified(userId);
+    console.log('User verification status:', verified);
     const isAdmin = await isUserAdmin(userId);
+    console.log('User admin status:', isAdmin);
 
-    let message = `🆘 *${escapeMarkdownV2('دليل استخدام بوت معين المجتهدين')}*\n`;
-    message += '━━━━━━━━━━━━━━━━━━━━\n';
-    message += `📚 *${escapeMarkdownV2('مرحبًا بك في بوت إدارة الدورات!')}*\n\n`;
-    message += `🌐 *${escapeMarkdownV2('أوامر عامة (متاحة للجميع):')}*\n`;
-    message += `• 🏠 /start - ${escapeMarkdownV2('بدء الاستخدام وتسجيل الحساب')}\n`;
-    message += `• 🔑 /verify كود_التفعيل - ${escapeMarkdownV2('تفعيل الحساب (مثال: /verify free_palestine1447)')}\n`;
-    message += `• ℹ️ /help - ${escapeMarkdownV2('عرض هذا الدليل')}\n\n`;
-    if (verified) {
-      message += `👤 *${escapeMarkdownV2('أوامر المستخدم المفعل:')}*\n`;
-      message += `• 📋 /profile - ${escapeMarkdownV2('عرض ملفك الشخصي')}\n`;
-      message += `• 📅 /attendance رقم_الدرس - ${escapeMarkdownV2('تسجيل الحضور (مثال: /attendance 1)')}\n`;
-      message += `• 📝 /submit رقم_الواجب الإجابة - ${escapeMarkdownV2('إرسال إجابة (مثال: /submit 1 إجابتي)')}\n`;
-      message += `• 📚 /courses - ${escapeMarkdownV2('قائمة الدروس')}\n`;
-      message += `• 📋 /assignments - ${escapeMarkdownV2('قائمة الواجبات')}\n`;
-      message += `• 🔔 /reminders - ${escapeMarkdownV2('تفعيل/إيقاف التذكيرات')}\n`;
-      message += `• ⏰ /addreminder التاريخ_الوقت الرسالة - ${escapeMarkdownV2('إضافة تذكير مخصص')}\n`;
-      message += `• 💬 /feedback رسالتك - ${escapeMarkdownV2('إرسال تغذية راجعة')}\n`;
-      message += `• ⚙️ /settings - ${escapeMarkdownV2('إعدادات المستخدم')}\n`;
-      message += `• ❓ /faq - ${escapeMarkdownV2('الأسئلة الشائعة')}\n\n`;
+    let message = escapeMarkdownV2(
+      `🆘 *دليل استخدام بوت معين المجتهدين*\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `📚 *مرحبًا بك في بوت إدارة الدورات!*\n\n` +
+      `🌐 *أوامر عامة (متاحة للجميع):*\n` +
+      `• 🏠 /start \\- بدء الاستخدام وتسجيل الحساب\n` +
+      `• 🔑 /verify كود_التفعيل \\- تفعيل الحساب (مثال: /verify free_palestine1447)\n` +
+      `• ℹ️ /help \\- عرض هذا الدليل\n` +
+      `• ❓ /faq \\- الأسئلة الشائعة\n\n`
+    );
+
+    if (verified?.verified) {
+      message += escapeMarkdownV2(
+        `👤 *أوامر المستخدم المفعل:*\n` +
+        `• 📋 /profile \\- عرض ملفك الشخصي\n` +
+        `• 📅 /attendance رقم_الدرس \\- تسجيل الحضور (مثال: /attendance 1)\n` +
+        `• 📝 /submit رقم_الواجب الإجابة \\- إرسال إجابة (مثال: /submit 1 إجابتي)\n` +
+        `• 📚 /courses \\- قائمة الدروس\n` +
+        `• 📋 /assignments \\- قائمة الواجبات\n` +
+        `• 🔔 /reminders \\- تفعيل/إيقاف التذكيرات\n` +
+        `• ⏰ /addreminder التاريخ_الوقت الرسالة \\- إضافة تذكير مخصص\n` +
+        `• 💬 /feedback رسالتك \\- إرسال تغذية راجعة\n` +
+        `• ⚙️ /settings \\- إعدادات المستخدم\n`
+      );
     } else {
-      message += `🔒 *${escapeMarkdownV2('يجب التفعيل أولاً (استخدم /verify):')}*\n\n`;
+      message += escapeMarkdownV2(
+        `🔒 *يجب التفعيل أولاً (استخدم /verify)*\n\n`
+      );
     }
-    if (isAdmin) {
-      message += `⚙️ *${escapeMarkdownV2('أوامر المدير:')}*\n`;
-      message += `• 📊 /stats - ${escapeMarkdownV2('عرض إحصائيات البوت')}\n`;
-      message += `• 📢 /publish نص_الإعلان - ${escapeMarkdownV2('نشر إعلان (مثال: /publish الدرس القادم غدًا)')}\n`;
-      message += `• 📊 /export نوع_البيانات - ${escapeMarkdownV2('تصدير البيانات (attendance/assignments)')}\n`;
-      message += `• 📬 /viewfeedback - ${escapeMarkdownV2('عرض التغذية الراجعة')}\n`;
-      message += `• 🗑️ /deletecourse رقم_الكورس - ${escapeMarkdownV2('حذف الكورس')}\n`;
-      message += `• 📝 إدارة الواجبات: /addassignment, /updateassignment, /deleteassignment\n\n`;
-    }
-    message += '━━━━━━━━━━━━━━━━━━━━\n';
-    message += `💡 *${escapeMarkdownV2('نصائح:')}*\n`;
-    message += `- ${escapeMarkdownV2('احفظ كود التفعيل بأمان')}\n`;
-    message += `- ${escapeMarkdownV2('تابع مواعيد الدروس والواجبات')}\n`;
-    message += `- ${escapeMarkdownV2('تواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)} ${escapeMarkdownV2('للدعم')}\n\n`;
-    message += `🤖 *${escapeMarkdownV2('بوت معين المجتهدين - v2.0.0')}*\n`;
-    message += `📅 *${escapeMarkdownV2('آخر تحديث:')}* ${escapeMarkdownV2(new Date().toLocaleDateString('ar-SA'))}`;
 
+    if (isAdmin) {
+      message += escapeMarkdownV2(
+        `⚙️ *أوامر المدير:*\n` +
+        `• 📊 /stats \\- عرض إحصائيات البوت\n` +
+        `• 📢 /publish نص_الإعلان \\- نشر إعلان (مثال: /publish الدرس القادم غدًا)\n` +
+        `• 📊 /export نوع_البيانات \\- تصدير البيانات (attendance/assignments)\n` +
+        `• 📬 /viewfeedback \\- عرض التغذية الراجعة\n` +
+        `• 🗑️ /deletecourse رقم_الكورس \\- حذف الكورس\n` +
+        `• 📝 إدارة الواجبات: /addassignment, /updateassignment, /deleteassignment\n` +
+        `• 📚 إدارة الكورسات: /addcourse, /updatecourse, /deletecourse\n\n`
+      );
+    }
+
+    message += escapeMarkdownV2(
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `💡 *نصائح:*\n` +
+      `• احفظ كود التفعيل بأمان\n` +
+      `• تابع مواعيد الدروس والواجبات\n` +
+      `• تواصل مع ${config.admin.supportChannel} للدعم\n\n` +
+      `🤖 *بوت معين المجتهدين \\- v2\\.0\\.0*\n` +
+      `📅 *آخر تحديث:* ${new Date().toLocaleDateString('ar-SA')}`
+    );
+
+    console.log('Sending /help response:', message);
     await ctx.reply(message, {
       parse_mode: 'MarkdownV2',
-      disable_web_page_preview: true
+      disable_web_page_preview: true,
     });
   } catch (error) {
+    console.error('Error in /help command:', error);
     try {
       const fs = await import('fs');
       fs.appendFileSync('./data/error.log', `[HELP] ${new Date().toISOString()}\n${error.stack || error}\n`);
-    } catch (e) {}
-    await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${escapeMarkdownV2(config.admin.supportChannel)}`, { parse_mode: 'MarkdownV2' });
+    } catch (e) {
+      console.error('Error logging to file:', e);
+    }
+    await ctx.reply(
+      escapeMarkdownV2(
+        `❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`
+      ),
+      { parse_mode: 'MarkdownV2' }
+    );
   }
 }
