@@ -16,7 +16,9 @@ export function ensureDataDirectoryExists() {
 // Initialize database connection and create tables
 export async function initDatabase() {
   try {
+    // Ensure data directory and log files exist before any database operations
     ensureDataDirectoryExists();
+    ensureLogFiles();
     
     db = await open({
       filename: './data/mouin_almojtahidin.db',
@@ -34,6 +36,25 @@ export async function initDatabase() {
   } catch (error) {
     console.error('❌ خطأ في الاتصال بقاعدة البيانات:', error);
     throw error;
+  }
+}
+
+// Ensure log files exist (duplicated from logger for independent operation)
+function ensureLogFiles() {
+  const logDir = './data';
+  if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+  }
+  
+  const combinedLogFile = './data/combined.log';
+  const errorLogFile = './data/error.log';
+  
+  if (!fs.existsSync(combinedLogFile)) {
+    fs.writeFileSync(combinedLogFile, '');
+  }
+  
+  if (!fs.existsSync(errorLogFile)) {
+    fs.writeFileSync(errorLogFile, '');
   }
 }
 
@@ -167,6 +188,27 @@ export async function isUserAdmin(userId) {
   return config.admin.userIds.includes(userId);
 }
 
+export async function toggleUserReminders(userId) {
+  try {
+    const user = await getUserInfo(userId);
+    if (!user) {
+      return { success: false, message: 'المستخدم غير موجود' };
+    }
+    
+    const newReminderStatus = !user.reminders_enabled;
+    await db.run('UPDATE users SET reminders_enabled = ? WHERE user_id = ?', [newReminderStatus ? 1 : 0, userId]);
+    
+    return {
+      success: true,
+      remindersEnabled: newReminderStatus,
+      message: newReminderStatus ? 'تم تفعيل التذكيرات' : 'تم إيقاف التذكيرات'
+    };
+  } catch (error) {
+    console.error('خطأ في تبديل التذكيرات:', error);
+    return { success: false, message: 'حدث خطأ في تحديث التذكيرات' };
+  }
+}
+
 // Lesson functions
 export async function getLessons() {
   try {
@@ -281,6 +323,16 @@ export async function getAssignment(assignmentId) {
   }
 }
 
+export async function getAllAssignments() {
+  try {
+    const assignments = await db.all('SELECT * FROM assignments ORDER BY assignment_id DESC');
+    return assignments;
+  } catch (error) {
+    console.error('خطأ في جلب جميع الواجبات:', error);
+    return [];
+  }
+}
+
 export async function submitAnswer(userId, assignmentId, answer) {
   try {
     const assignment = await getAssignment(assignmentId);
@@ -323,6 +375,18 @@ export async function getUserSubmissions(userId) {
 // Statistics functions
 export async function getStats() {
   try {
+    // Check if tables exist before querying
+    const tablesExist = await checkTablesExist();
+    if (!tablesExist) {
+      console.warn('بعض الجداول غير موجودة، سيتم إرجاع إحصائيات فارغة');
+      return {
+        totalUsers: 0,
+        verifiedUsers: 0,
+        attendanceByLesson: [],
+        submissionsByAssignment: []
+      };
+    }
+
     const totalUsers = await db.get('SELECT COUNT(*) as count FROM users');
     const verifiedUsers = await db.get('SELECT COUNT(*) as count FROM users WHERE is_verified = 1');
     
@@ -335,22 +399,49 @@ export async function getStats() {
     `);
     
     const submissionsByAssignment = await db.all(`
-      SELECT as.assignment_id, as.title, COUNT(s.user_id) as submission_count,
+      SELECT assign.assignment_id, assign.title, COUNT(s.user_id) as submission_count,
              (SELECT COUNT(*) FROM users WHERE is_verified = 1) as total_verified
-      FROM assignments as
-      LEFT JOIN submissions s ON as.assignment_id = s.assignment_id
-      GROUP BY as.assignment_id, as.title
+      FROM assignments assign
+      LEFT JOIN submissions s ON assign.assignment_id = s.assignment_id
+      GROUP BY assign.assignment_id, assign.title
     `);
 
     return {
-      totalUsers: totalUsers.count,
-      verifiedUsers: verifiedUsers.count,
-      attendanceByLesson,
-      submissionsByAssignment
+      totalUsers: totalUsers?.count || 0,
+      verifiedUsers: verifiedUsers?.count || 0,
+      attendanceByLesson: attendanceByLesson || [],
+      submissionsByAssignment: submissionsByAssignment || []
     };
   } catch (error) {
     console.error('خطأ في جلب الإحصائيات:', error);
-    return null;
+    return {
+      totalUsers: 0,
+      verifiedUsers: 0,
+      attendanceByLesson: [],
+      submissionsByAssignment: []
+    };
+  }
+}
+
+// Check if all required tables exist
+async function checkTablesExist() {
+  try {
+    const requiredTables = ['users', 'lessons', 'attendance', 'assignments', 'submissions'];
+    
+    for (const table of requiredTables) {
+      const result = await db.get(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
+        [table]
+      );
+      if (!result) {
+        console.warn(`الجدول ${table} غير موجود`);
+        return false;
+      }
+    }
+    return true;
+  } catch (error) {
+    console.error('خطأ في فحص وجود الجداول:', error);
+    return false;
   }
 }
 

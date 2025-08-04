@@ -4,6 +4,7 @@ import { initDatabase, closeDatabase } from './bot/utils/database.js';
 import { initReminders, cleanupReminders } from './bot/utils/reminders.js';
 import { loggerMiddleware, logBotStartup, logBotShutdown, logError, logActivity } from './bot/middlewares/logger.js';
 import { verifyMiddleware, requireAdmin } from './bot/middlewares/verifyMiddleware.js';
+import { rateLimiterMiddleware } from './bot/middlewares/rateLimiter.js';
 
 // Import command handlers
 import { handleStart } from './bot/commands/start.js';
@@ -19,6 +20,10 @@ import {
   handleDeleteAssignment, 
   handleSubmit 
 } from './bot/commands/assignment.js';
+import { handleCourses } from './bot/commands/courses.js';
+import { handleAssignments } from './bot/commands/assignments.js';
+import { handleReminders } from './bot/commands/reminders.js';
+import { handleHelp } from './bot/commands/help.js';
 
 // Validate environment variables
 function validateConfig() {
@@ -83,6 +88,7 @@ async function initBot() {
     
     // Apply middlewares
     bot.use(loggerMiddleware());
+    bot.use(rateLimiterMiddleware());
     bot.use(verifyMiddleware());
     
     // Register commands
@@ -105,13 +111,14 @@ async function initBot() {
     // Send startup notification to admin
     if (config.admin.chatId) {
       try {
-        const startupMessage = `🚀 *تم تشغيل البوت بنجاح*\n\n` +
-          `🤖 البوت: @${bot.botInfo.username}\n` +
-          `⏰ الوقت: ${new Date().toLocaleString('ar-SA')}\n` +
-          `📊 حالة قاعدة البيانات: ✅ متصلة\n` +
+        const escapedUsername = bot.botInfo.username.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
+        const startupMessage = `🚀 *تم تشغيل البوت بنجاح*\\n\\n` +
+          `🤖 البوت: @${escapedUsername}\\n` +
+          `⏰ الوقت: ${new Date().toLocaleString('ar-SA')}\\n` +
+          `📊 حالة قاعدة البيانات: ✅ متصلة\\n` +
           `🔔 نظام التذكيرات: ✅ مفعل`;
         
-        await bot.telegram.sendMessage(config.admin.chatId, startupMessage, { parse_mode: 'Markdown' });
+        await bot.telegram.sendMessage(config.admin.chatId, startupMessage, { parse_mode: 'MarkdownV2' });
       } catch (notifyError) {
         logError(notifyError, 'STARTUP_NOTIFICATION');
       }
@@ -130,11 +137,15 @@ function registerCommands(bot) {
   // Public commands (no verification required)
   bot.command('start', handleStart);
   bot.command('verify', handleVerify);
+  bot.command('help', handleHelp);
   
   // User commands (verification required)
   bot.command('faq', handleFaq);
   bot.command('profile', handleProfile);
+  bot.command('courses', handleCourses);
+  bot.command('assignments', handleAssignments);
   bot.command('attendance', handleAttendance);
+  bot.command('reminders', handleReminders);
   bot.command('submit', handleSubmit);
   
   // Admin commands (verification + admin privileges required)
@@ -157,29 +168,34 @@ function registerCommands(bot) {
     
     // List of known commands
     const knownCommands = [
-      '/start', '/verify', '/faq', '/profile', '/attendance', '/submit',
+      '/start', '/verify', '/help', '/faq', '/profile', '/courses', 
+      '/assignments', '/attendance', '/reminders', '/submit',
       '/stats', '/publish', '/addassignment', '/updateassignment', '/deleteassignment'
     ];
     
     if (!knownCommands.includes(command)) {
       await ctx.reply(
-        `❓ *أمر غير معروف*\n\n` +
-        `الأوامر المتاحة:\n\n` +
-        `👤 *أوامر المستخدم:*\n` +
-        `• /start - بدء استخدام البوت\n` +
-        `• /verify - تفعيل الحساب\n` +
-        `• /profile - عرض الملف الشخصي\n` +
-        `• /faq - الأسئلة الشائعة\n` +
-        `• /attendance - تسجيل الحضور\n` +
-        `• /submit - إرسال إجابة واجب\n\n` +
-        `⚙️ *أوامر المدير:*\n` +
-        `• /stats - عرض الإحصائيات\n` +
-        `• /publish - نشر إعلان\n` +
-        `• /addassignment - إضافة واجب\n` +
-        `• /updateassignment - تحديث واجب\n` +
-        `• /deleteassignment - حذف واجب\n\n` +
-        `للمساعدة: ${config.admin.supportChannel}`,
-        { parse_mode: 'Markdown' }
+        `❓ *أمر غير معروف*\\n\\n` +
+        `الأوامر المتاحة:\\n\\n` +
+        `🌐 *الأوامر العامة:*\\n` +
+        `• \`/start\` \\- بدء استخدام البوت\\n` +
+        `• \`/verify\` \\- تفعيل الحساب\\n` +
+        `• \`/help\` \\- دليل المساعدة الشامل\\n\\n` +
+        `👤 *أوامر المستخدم:*\\n` +
+        `• \`/profile\` \\- عرض الملف الشخصي\\n` +
+        `• \`/courses\` \\- قائمة الدروس\\n` +
+        `• \`/assignments\` \\- قائمة الواجبات\\n` +
+        `• \`/attendance\` \\- تسجيل الحضور\\n` +
+        `• \`/reminders\` \\- تبديل التذكيرات\\n` +
+        `• \`/submit\` \\- إرسال إجابة واجب\\n` +
+        `• \`/faq\` \\- الأسئلة الشائعة\\n\\n` +
+        `⚙️ *أوامر المدير:*\\n` +
+        `• \`/stats\` \\- عرض الإحصائيات\\n` +
+        `• \`/publish\` \\- نشر إعلان\\n` +
+        `• إدارة الواجبات \\(add/update/delete\\)\\n\\n` +
+        `💡 استخدم \`/help\` للحصول على دليل مفصل\\n\\n` +
+        `للمساعدة: ${config.admin.supportChannel.replace(/@/g, '\\@')}`,
+        { parse_mode: 'MarkdownV2' }
       );
     }
   });
@@ -206,11 +222,11 @@ function setupShutdownHandlers(bot) {
       // Send shutdown notification to admin
       if (config.admin.chatId) {
         try {
-          const shutdownMessage = `🛑 *تم إيقاف البوت*\n\n` +
-            `⏰ الوقت: ${new Date().toLocaleString('ar-SA')}\n` +
+          const shutdownMessage = `🛑 *تم إيقاف البوت*\\n\\n` +
+            `⏰ الوقت: ${new Date().toLocaleString('ar-SA')}\\n` +
             `📊 السبب: ${signal}`;
           
-          await bot.telegram.sendMessage(config.admin.chatId, shutdownMessage, { parse_mode: 'Markdown' });
+          await bot.telegram.sendMessage(config.admin.chatId, shutdownMessage, { parse_mode: 'MarkdownV2' });
         } catch (notifyError) {
           logError(notifyError, 'SHUTDOWN_NOTIFICATION');
         }

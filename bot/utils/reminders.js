@@ -96,15 +96,21 @@ async function sendLessonReminder(lesson, timeBefore) {
     // Get verified users with reminders enabled
     const verifiedUsers = await getVerifiedUsersWithReminders();
     
-    // Create reminder message
-    const reminderMessage = `⏰ *تذكير بالدرس*\n\n` +
-      `📚 *عنوان الدرس:* ${lesson.title}\n` +
-      `📅 *التاريخ:* ${lesson.date}\n` +
-      `⏰ *الوقت:* ${lesson.time}\n` +
-      `🔔 *يبدأ خلال:* ${timeBefore}\n\n` +
-      `🔗 *رابط الدرس:* ${lesson.zoom_link || config.zoom.fullLink}\n\n` +
-      `📋 لا تنسَ تسجيل حضورك باستخدام /attendance بعد الدرس\n\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n` +
+    // Create reminder message with proper MarkdownV2 escaping
+    const escapedTitle = lesson.title.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
+    const escapedDate = lesson.date.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
+    const escapedTime = lesson.time.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
+    const escapedTimeBefore = timeBefore.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
+    const escapedZoomLink = (lesson.zoom_link || config.zoom.fullLink).replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
+    
+    const reminderMessage = `⏰ *تذكير بالدرس*\\n\\n` +
+      `📚 *عنوان الدرس:* ${escapedTitle}\\n` +
+      `📅 *التاريخ:* ${escapedDate}\\n` +
+      `⏰ *الوقت:* ${escapedTime}\\n` +
+      `🔔 *يبدأ خلال:* ${escapedTimeBefore}\\n\\n` +
+      `🔗 *رابط الدرس:* [انقر هنا](${lesson.zoom_link || config.zoom.fullLink})\\n\\n` +
+      `📋 لا تنسَ تسجيل حضورك باستخدام /attendance بعد الدرس\\n\\n` +
+      `━━━━━━━━━━━━━━━━━━━━\\n` +
       `🤖 بوت معين المجتهدين`;
 
     let successCount = 0;
@@ -117,7 +123,7 @@ async function sendLessonReminder(lesson, timeBefore) {
         const groupMessage = `${reminderMessage}\n\n${mentions}`;
         
         await bot.telegram.sendMessage(config.admin.groupId, groupMessage, { 
-          parse_mode: 'Markdown',
+          parse_mode: 'MarkdownV2',
           disable_web_page_preview: true 
         });
         successCount++;
@@ -131,7 +137,7 @@ async function sendLessonReminder(lesson, timeBefore) {
     for (const userId of verifiedUsers) {
       try {
         await bot.telegram.sendMessage(userId, reminderMessage, { 
-          parse_mode: 'Markdown',
+          parse_mode: 'MarkdownV2',
           disable_web_page_preview: true 
         });
         successCount++;
@@ -147,19 +153,22 @@ async function sendLessonReminder(lesson, timeBefore) {
     logActivity(`تم إرسال تذكير الدرس ${lesson.title} (${timeBefore}): نجح ${successCount}، فشل ${failCount}`);
 
     // Notify admin about reminder sent
-    if (config.admin.chatId) {
-      try {
-        const adminMessage = `📤 *تم إرسال تذكير الدرس*\n\n` +
-          `📚 الدرس: ${lesson.title}\n` +
-          `⏰ التوقيت: ${timeBefore} قبل البداية\n` +
-          `✅ نجح: ${successCount}\n` +
-          `❌ فشل: ${failCount}`;
-        
-        await bot.telegram.sendMessage(config.admin.chatId, adminMessage, { parse_mode: 'Markdown' });
-      } catch (adminError) {
-        logError(adminError, 'ADMIN_REMINDER_NOTIFICATION');
+          if (config.admin.chatId) {
+        try {
+          const escapedLessonTitle = lesson.title.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
+          const escapedTimeBefore = timeBefore.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
+          
+          const adminMessage = `📤 *تم إرسال تذكير الدرس*\\n\\n` +
+            `📚 الدرس: ${escapedLessonTitle}\\n` +
+            `⏰ التوقيت: ${escapedTimeBefore} قبل البداية\\n` +
+            `✅ نجح: ${successCount}\\n` +
+            `❌ فشل: ${failCount}`;
+          
+          await bot.telegram.sendMessage(config.admin.chatId, adminMessage, { parse_mode: 'MarkdownV2' });
+        } catch (adminError) {
+          logError(adminError, 'ADMIN_REMINDER_NOTIFICATION');
+        }
       }
-    }
   } catch (error) {
     logError(error, 'SEND_REMINDER');
   }
