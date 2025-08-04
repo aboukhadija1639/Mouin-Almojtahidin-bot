@@ -15,8 +15,8 @@ export async function handleVerify(ctx) {
     if (args.length < 2) {
       await ctx.reply(
         `🔑 *${escapeMarkdownV2('كيفية استخدام أمر التفعيل')}*\n\n` +
-        `${escapeMarkdownV2('الصيغة الصحيحة:')} `/verify كود_التفعيل`\n\n` +
-        `${escapeMarkdownV2('مثال:')} `/verify ABC123`\n\n` +
+        `${escapeMarkdownV2('الصيغة الصحيحة:')} /verify كود_التفعيل\n\n` +
+        `${escapeMarkdownV2('مثال:')} /verify ABC123\n\n` +
         `💡 ${escapeMarkdownV2('للحصول على كود التفعيل، تواصل مع:')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
         { parse_mode: 'MarkdownV2' }
       );
@@ -53,7 +53,6 @@ export async function handleVerify(ctx) {
 
     // Verify the user
     const verificationSuccess = await verifyUser(userId);
-    
     if (verificationSuccess) {
       await ctx.reply(
         `🎉 *${escapeMarkdownV2('تم تفعيل حسابك بنجاح!')}*\n\n` +
@@ -68,21 +67,20 @@ export async function handleVerify(ctx) {
       );
 
       // Notify admin about new verified user
-      try {
-        if (config.admin.chatId) {
-          const adminMessage =
-            `🆕 *${escapeMarkdownV2('مستخدم جديد تم تفعيله')}*\n\n` +
-            `${escapeMarkdownV2('الاسم:')} ${escapeMarkdownV2(firstName)}\n` +
-            `${escapeMarkdownV2('المعرف:')} @${escapeMarkdownV2(username || 'لا يوجد')}\n` +
-            `ID: \\`${userId}\\`\n` +
-            `${escapeMarkdownV2('الوقت:')} ${escapeMarkdownV2(new Date().toLocaleString('ar-SA'))}`;
-          await ctx.telegram.sendMessage(config.admin.chatId, adminMessage, { parse_mode: 'MarkdownV2' });
-        }
-      } catch (notifyError) {
+      if (config.admin.chatId) {
         try {
+          const adminMessage = `
+            🆕 *${escapeMarkdownV2('مستخدم جديد تم تفعيله')}*\n\n
+            ${escapeMarkdownV2('الاسم:')} ${escapeMarkdownV2(firstName)}\n
+            ${escapeMarkdownV2('المعرف:')} @${escapeMarkdownV2(username || 'لا يوجد')}\n
+            ID: \`${userId}\`\n
+            ${escapeMarkdownV2('الوقت:')} ${escapeMarkdownV2(new Date().toLocaleString('ar-SA'))}
+          `.trim();
+          await ctx.telegram.sendMessage(config.admin.chatId, adminMessage, { parse_mode: 'MarkdownV2' });
+        } catch (notifyError) {
           const fs = await import('fs');
           fs.appendFileSync('./data/error.log', `[ADMIN_NOTIFY] ${new Date().toISOString()}\n${notifyError.stack || notifyError}\n`);
-        } catch (e) {}
+        }
       }
     } else {
       await ctx.reply(
@@ -97,7 +95,9 @@ export async function handleVerify(ctx) {
     try {
       const fs = await import('fs');
       fs.appendFileSync('./data/error.log', `[VERIFY] ${new Date().toISOString()}\n${error.stack || error}\n`);
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to log error:', e);
+    }
     await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${escapeMarkdownV2(config.admin.supportChannel)}`, { parse_mode: 'MarkdownV2' });
   }
 }

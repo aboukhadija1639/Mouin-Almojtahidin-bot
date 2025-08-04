@@ -13,6 +13,17 @@ export function ensureDataDirectoryExists() {
   }
 }
 
+// getAssignments
+export async function getAssignments() {
+  try {
+    const assignments = await db.all('SELECT * FROM assignments ORDER BY assignment_id DESC');
+    return assignments;
+  } catch (error) {
+    console.error('خطأ في جلب الواجبات:', error);
+    return [];
+  }
+}
+
 // Initialize database connection and create tables
 export async function initDatabase() {
   try {
