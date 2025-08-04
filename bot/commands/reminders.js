@@ -1,91 +1,43 @@
 import { toggleUserReminders, getUserInfo } from '../utils/database.js';
 import { config } from '../../config.js';
+import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
 
 export async function handleReminders(ctx) {
   try {
     const userId = ctx.from.id;
-
-    // Get current user info
     const userInfo = await getUserInfo(userId);
-    
     if (!userInfo) {
       await ctx.reply(
-        `❌ *لم يتم العثور على ملفك الشخصي*\\n\\n` +
-        `يرجى استخدام /start لتسجيل حسابك أولاً\\.\n\n` +
-        `💡 للمساعدة: ${config.admin.supportChannel.replace(/@/g, '\\@')}`,
-        { 
-          parse_mode: 'MarkdownV2',
-          disable_web_page_preview: true 
-        }
+        `❌ *${escapeMarkdownV2('لم يتم العثور على حسابك')}*\n━━━━━━━━━━━━━━━━━━━━\n${escapeMarkdownV2('استخدم /start للتسجيل.')}\n💡 ${escapeMarkdownV2('للمساعدة:')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
-
     if (!userInfo.is_verified) {
       await ctx.reply(
-        `🚫 *غير مسموح*\\n\\n` +
-        `يجب تفعيل حسابك أولاً باستخدام /verify\\.\n\n` +
-        `💡 للمساعدة: ${config.admin.supportChannel.replace(/@/g, '\\@')}`,
-        { 
-          parse_mode: 'MarkdownV2',
-          disable_web_page_preview: true 
-        }
+        `🔒 *${escapeMarkdownV2('حسابك غير مفعل')}*\n━━━━━━━━━━━━━━━━━━━━\n${escapeMarkdownV2('استخدم /verify للتفعيل.')}\n💡 ${escapeMarkdownV2('للمساعدة:')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
-
-    // Toggle reminders
     const result = await toggleUserReminders(userId);
-    
     if (!result.success) {
       await ctx.reply(
-        `❌ *فشل في تحديث التذكيرات*\\n\\n` +
-        `${result.message}\\n\\n` +
-        `حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel.replace(/@/g, '\\@')}`,
-        { 
-          parse_mode: 'MarkdownV2',
-          disable_web_page_preview: true 
-        }
+        `❌ *${escapeMarkdownV2('فشل في تحديث التذكيرات')}*\n━━━━━━━━━━━━━━━━━━━━\n${escapeMarkdownV2(result.message)}\n💡 ${escapeMarkdownV2('تواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
-
-    // Build success message
-    const statusIcon = result.remindersEnabled ? '🔔' : '🔕';
-    const statusText = result.remindersEnabled ? 'مفعلة' : 'معطلة';
-    const actionText = result.remindersEnabled ? 'تفعيل' : 'إيقاف';
-    
-    let message = `${statusIcon} *تم ${actionText} التذكيرات بنجاح*\\n\\n`;
-    
-    message += `📊 *حالة التذكيرات الحالية:*\\n`;
-    message += `• الحالة: ${statusIcon} ${statusText}\\n\\n`;
-    
-    if (result.remindersEnabled) {
-      message += `✅ *ستتلقى الآن تذكيرات بـ:*\\n`;
-      message += `• الدروس القادمة \\(قبل 24 ساعة وساعة واحدة\\)\\n`;
-      message += `• الإعلانات المهمة\\n`;
-      message += `• مواعيد تسليم الواجبات\\n\\n`;
-      message += `💡 *ملاحظة:* التذكيرات ستُرسل كرسائل خاصة ومذكورات في المجموعة\\n\\n`;
-    } else {
-      message += `❌ *لن تتلقى الآن:*\\n`;
-      message += `• تذكيرات الدروس\\n`;
-      message += `• الإعلانات التلقائية\\n`;
-      message += `• تذكيرات الواجبات\\n\\n`;
-      message += `⚠️ *ملاحظة:* يمكنك تفعيل التذكيرات مرة أخرى باستخدام نفس الأمر\\n\\n`;
-    }
-    
-    message += `━━━━━━━━━━━━━━━━━━━━\\n\\n`;
-    message += `🔄 استخدم /reminders مرة أخرى لتبديل الحالة\\n`;
-    message += `👤 استخدم /profile لعرض ملفك الشخصي\\n\\n`;
-    message += `💡 للمساعدة: ${config.admin.supportChannel.replace(/@/g, '\\@')}`;
-
-    await ctx.reply(message, { 
-      parse_mode: 'MarkdownV2',
-      disable_web_page_preview: true 
-    });
-
+    const status = result.remindersEnabled ? '🔔 مفعلة' : '🔕 معطلة';
+    await ctx.reply(
+      `${result.remindersEnabled ? '🔔' : '🔕'} *${escapeMarkdownV2(`تم ${result.remindersEnabled ? 'تفعيل' : 'إيقاف'} التذكيرات`)}*\n━━━━━━━━━━━━━━━━━━━━\n📊 *${escapeMarkdownV2('الحالة الحالية:')}* ${escapeMarkdownV2(status)}\n${result.remindersEnabled ? '✅ *ستتلقى:* تذكيرات الدروس والواجبات' : '❌ *لن تتلقى:* تذكيرات'}\n🔄 ${escapeMarkdownV2('استخدم /reminders للتغيير مجددًا')}\n💡 ${escapeMarkdownV2('للمساعدة:')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
+      { parse_mode: 'MarkdownV2' }
+    );
   } catch (error) {
-    console.error('خطأ في أمر /reminders:', error);
-    await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`);
+    try {
+      const fs = await import('fs');
+      fs.appendFileSync('./data/error.log', `[REMINDERS] ${new Date().toISOString()}\n${error.stack || error}\n`);
+    } catch (e) {}
+    await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${escapeMarkdownV2(config.admin.supportChannel)}`, { parse_mode: 'MarkdownV2' });
   }
 }

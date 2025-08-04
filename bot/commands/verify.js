@@ -1,5 +1,6 @@
 import { addUser, verifyUser, isUserVerified } from '../utils/database.js';
 import { config } from '../../config.js';
+import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
 
 export async function handleVerify(ctx) {
   try {
@@ -13,11 +14,11 @@ export async function handleVerify(ctx) {
     const args = messageText.split(' ');
     if (args.length < 2) {
       await ctx.reply(
-        `🔑 *كيفية استخدام أمر التفعيل*\n\n` +
-        `الصيغة الصحيحة: \`/verify كود_التفعيل\`\n\n` +
-        `مثال: \`/verify ABC123\`\n\n` +
-        `للحصول على كود التفعيل، تواصل مع ${config.admin.supportChannel}`,
-        { parse_mode: 'Markdown' }
+        `🔑 *${escapeMarkdownV2('كيفية استخدام أمر التفعيل')}*\n\n` +
+        `${escapeMarkdownV2('الصيغة الصحيحة:')} `/verify كود_التفعيل`\n\n` +
+        `${escapeMarkdownV2('مثال:')} `/verify ABC123`\n\n` +
+        `💡 ${escapeMarkdownV2('للحصول على كود التفعيل، تواصل مع:')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -28,10 +29,10 @@ export async function handleVerify(ctx) {
     const alreadyVerified = await isUserVerified(userId);
     if (alreadyVerified) {
       await ctx.reply(
-        `✅ *حسابك مفعل بالفعل!*\n\n` +
-        `يمكنك استخدام جميع ميزات البوت.\n\n` +
-        `استخدم /profile لعرض ملفك الشخصي.`,
-        { parse_mode: 'Markdown' }
+        `✅ *${escapeMarkdownV2('حسابك مفعل بالفعل!')}*\n\n` +
+        `${escapeMarkdownV2('يمكنك استخدام جميع ميزات البوت.')}\n\n` +
+        `${escapeMarkdownV2('استخدم /profile لعرض ملفك الشخصي.')}`,
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -39,10 +40,10 @@ export async function handleVerify(ctx) {
     // Verify the activation code
     if (providedCode !== config.users.activationCode) {
       await ctx.reply(
-        `❌ *كود التفعيل غير صحيح*\n\n` +
-        `تأكد من كتابة الكود بشكل صحيح.\n\n` +
-        `للحصول على الكود الصحيح، تواصل مع ${config.admin.supportChannel}`,
-        { parse_mode: 'Markdown' }
+        `❌ *${escapeMarkdownV2('كود التفعيل غير صحيح')}*\n\n` +
+        `${escapeMarkdownV2('تأكد من كتابة الكود بشكل صحيح.')}\n\n` +
+        `💡 ${escapeMarkdownV2('للحصول على الكود الصحيح، تواصل مع:')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -55,42 +56,48 @@ export async function handleVerify(ctx) {
     
     if (verificationSuccess) {
       await ctx.reply(
-        `🎉 *تم تفعيل حسابك بنجاح!*\n\n` +
-        `مرحباً بك في مجموعة معين المجتهدين.\n\n` +
-        `✅ يمكنك الآن:\n` +
-        `• تسجيل حضورك في الدروس\n` +
-        `• إرسال إجابات الواجبات\n` +
-        `• عرض ملفك الشخصي\n` +
-        `• الاطلاع على الأسئلة الشائعة\n\n` +
-        `استخدم /profile لعرض معلوماتك.`,
-        { parse_mode: 'Markdown' }
+        `🎉 *${escapeMarkdownV2('تم تفعيل حسابك بنجاح!')}*\n\n` +
+        `🤝 ${escapeMarkdownV2('مرحبًا بك في مجموعة معين المجتهدين.')}\n\n` +
+        `✅ ${escapeMarkdownV2('يمكنك الآن:')}\n` +
+        `• ${escapeMarkdownV2('تسجيل حضورك في الدروس')}\n` +
+        `• ${escapeMarkdownV2('إرسال إجابات الواجبات')}\n` +
+        `• ${escapeMarkdownV2('عرض ملفك الشخصي')}\n` +
+        `• ${escapeMarkdownV2('الاطلاع على الأسئلة الشائعة')}\n\n` +
+        `${escapeMarkdownV2('استخدم /profile لعرض معلوماتك.')}`,
+        { parse_mode: 'MarkdownV2' }
       );
 
       // Notify admin about new verified user
       try {
         if (config.admin.chatId) {
-          const adminMessage = `🆕 *مستخدم جديد تم تفعيله*\n\n` +
-            `الاسم: ${firstName}\n` +
-            `المعرف: @${username || 'لا يوجد'}\n` +
-            `ID: \`${userId}\`\n` +
-            `الوقت: ${new Date().toLocaleString('ar-SA')}`;
-          
-          await ctx.telegram.sendMessage(config.admin.chatId, adminMessage, { parse_mode: 'Markdown' });
+          const adminMessage =
+            `🆕 *${escapeMarkdownV2('مستخدم جديد تم تفعيله')}*\n\n` +
+            `${escapeMarkdownV2('الاسم:')} ${escapeMarkdownV2(firstName)}\n` +
+            `${escapeMarkdownV2('المعرف:')} @${escapeMarkdownV2(username || 'لا يوجد')}\n` +
+            `ID: \\`${userId}\\`\n` +
+            `${escapeMarkdownV2('الوقت:')} ${escapeMarkdownV2(new Date().toLocaleString('ar-SA'))}`;
+          await ctx.telegram.sendMessage(config.admin.chatId, adminMessage, { parse_mode: 'MarkdownV2' });
         }
       } catch (notifyError) {
-        console.error('خطأ في إرسال إشعار للمدير:', notifyError);
+        try {
+          const fs = await import('fs');
+          fs.appendFileSync('./data/error.log', `[ADMIN_NOTIFY] ${new Date().toISOString()}\n${notifyError.stack || notifyError}\n`);
+        } catch (e) {}
       }
     } else {
       await ctx.reply(
-        `❌ *فشل في تفعيل الحساب*\n\n` +
-        `حدث خطأ تقني، حاول مرة أخرى.\n\n` +
-        `إذا استمر الخطأ، تواصل مع ${config.admin.supportChannel}`,
-        { parse_mode: 'Markdown' }
+        `❌ *${escapeMarkdownV2('فشل في تفعيل الحساب')}*\n\n` +
+        `${escapeMarkdownV2('حدث خطأ تقني، حاول مرة أخرى.')}\n\n` +
+        `💡 ${escapeMarkdownV2('إذا استمر الخطأ، تواصل مع:')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
+        { parse_mode: 'MarkdownV2' }
       );
     }
-
   } catch (error) {
-    console.error('خطأ في أمر /verify:', error);
-    await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`);
+    // Log error to file
+    try {
+      const fs = await import('fs');
+      fs.appendFileSync('./data/error.log', `[VERIFY] ${new Date().toISOString()}\n${error.stack || error}\n`);
+    } catch (e) {}
+    await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${escapeMarkdownV2(config.admin.supportChannel)}`, { parse_mode: 'MarkdownV2' });
   }
 }

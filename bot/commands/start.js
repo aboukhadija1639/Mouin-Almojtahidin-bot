@@ -1,5 +1,6 @@
 import { addUser, isUserVerified } from '../utils/database.js';
 import { config } from '../../config.js';
+import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
 
 export async function handleStart(ctx) {
   try {
@@ -14,34 +15,39 @@ export async function handleStart(ctx) {
     // Check if user is already verified
     const verified = await isUserVerified(userId);
 
-    let message = `🤝 *مرحباً بك في بوت معين المجتهدين*\n\n`;
-    
+    // Header
+    let message = `🤝 *${escapeMarkdownV2('مرحبًا بك في بوت معين المجتهدين')}*\n\n`;
+    message += '━━━━━━━━━━━━━━━━━━━━\n\n';
+
     if (verified) {
-      message += `✅ حسابك مفعل بالفعل!\n\n`;
-      message += `يمكنك الآن استخدام جميع ميزات البوت:\n\n`;
+      message += `✅ ${escapeMarkdownV2('حسابك مفعل بالفعل!')}\n\n`;
+      message += `${escapeMarkdownV2('يمكنك الآن استخدام جميع ميزات البوت:')}\n\n`;
     } else {
-      message += `🔒 حسابك غير مفعل حالياً.\n\n`;
-      message += `لتفعيل حسابك واستخدام البوت، استخدم الأمر:\n`;
-      message += `\`/verify كود_التفعيل\`\n\n`;
-      message += `للحصول على كود التفعيل، تواصل مع ${config.admin.supportChannel}\n\n`;
+      message += `🔒 ${escapeMarkdownV2('حسابك غير مفعل حاليًا')}\n\n`;
+      message += `${escapeMarkdownV2('لتفعيل حسابك واستخدام جميع الميزات، استخدم:')}\n\n`;
+      message += '`/verify كود_التفعيل`\n\n';
+      message += `💡 ${escapeMarkdownV2('للحصول على الكود، تواصل مع:')} ${escapeMarkdownV2(config.admin.supportChannel)}\n\n`;
     }
 
-    message += `📚 *الميزات المتاحة:*\n`;
-    message += `• /profile - عرض ملفك الشخصي\n`;
-    message += `• /attendance - تسجيل الحضور\n`;
-    message += `• /faq - الأسئلة الشائعة\n`;
-    message += `• /submit - إرسال إجابة واجب\n\n`;
-    
-    message += `📞 *للدعم والمساعدة:*\n`;
-    message += `${config.admin.supportChannel}`;
+    message += `📚 *${escapeMarkdownV2('الميزات المتاحة:')}*\n\n`;
+    message += `• 📋 /profile - ${escapeMarkdownV2('عرض ملفك الشخصي')}\n`;
+    message += `• 📅 /attendance - ${escapeMarkdownV2('تسجيل الحضور')}\n`;
+    message += `• ❓ /faq - ${escapeMarkdownV2('الأسئلة الشائعة')}\n`;
+    message += `• 📝 /submit - ${escapeMarkdownV2('إرسال إجابة واجب')}\n\n`;
+    message += `📞 ${escapeMarkdownV2('للدعم والمساعدة:')} ${escapeMarkdownV2(config.admin.supportChannel)}\n\n`;
+    message += '━━━━━━━━━━━━━━━━━━━━\n\n';
+    message += '🤖 بوت معين المجتهدين';
 
-    await ctx.reply(message, { 
-      parse_mode: 'Markdown',
-      disable_web_page_preview: true 
+    await ctx.reply(message, {
+      parse_mode: 'MarkdownV2',
+      disable_web_page_preview: true
     });
-
   } catch (error) {
-    console.error('خطأ في أمر /start:', error);
-    await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`);
+    // Log error to file
+    try {
+      const fs = await import('fs');
+      fs.appendFileSync('./data/error.log', `[START] ${new Date().toISOString()}\n${error.stack || error}\n`);
+    } catch (e) {}
+    await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${escapeMarkdownV2(config.admin.supportChannel)}`, { parse_mode: 'MarkdownV2' });
   }
 }
