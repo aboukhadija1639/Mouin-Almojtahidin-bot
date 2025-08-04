@@ -10,9 +10,9 @@ export async function handleProfile(ctx) {
     
     if (!userInfo) {
       await ctx.reply(
-        `❌ *لم يتم العثور على ملفك الشخصي*\n\n` +
-        `يرجى استخدام /start لتسجيل حسابك أولاً.`,
-        { parse_mode: 'Markdown' }
+        `❌ *لم يتم العثور على ملفك الشخصي*\\n\\n` +
+        `يرجى استخدام /start لتسجيل حسابك أولاً\\.`,
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -24,28 +24,32 @@ export async function handleProfile(ctx) {
     // Format join date
     const joinDate = new Date(userInfo.join_date).toLocaleDateString('ar-SA');
 
-    // Build profile message
-    let message = `👤 *ملفك الشخصي*\n\n`;
+    // Build profile message with proper MarkdownV2 escaping
+    let message = `👤 *ملفك الشخصي*\\n\\n`;
     
-    message += `📝 *المعلومات الأساسية:*\n`;
-    message += `• الاسم: ${userInfo.first_name}\n`;
-    message += `• المعرف: ${userInfo.username ? '@' + userInfo.username : 'غير محدد'}\n`;
-    message += `• رقم المستخدم: \`${userInfo.user_id}\`\n`;
-    message += `• تاريخ الانضمام: ${joinDate}\n\n`;
+    // Escape special characters for MarkdownV2
+    const escapedName = userInfo.first_name.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
+    const escapedUsername = userInfo.username ? userInfo.username.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&') : 'غير محدد';
     
-    message += `✅ *حالة الحساب:*\n`;
-    message += `• التفعيل: ${userInfo.is_verified ? '✅ مفعل' : '❌ غير مفعل'}\n`;
-    message += `• التذكيرات: ${userInfo.reminders_enabled ? '🔔 مفعلة' : '🔕 معطلة'}\n\n`;
+    message += `📝 *المعلومات الأساسية:*\\n`;
+    message += `• الاسم: ${escapedName}\\n`;
+    message += `• المعرف: ${userInfo.username ? '@' + escapedUsername : 'غير محدد'}\\n`;
+    message += `• رقم المستخدم: \`${userInfo.user_id}\`\\n`;
+    message += `• تاريخ الانضمام: ${joinDate}\\n\\n`;
     
-    message += `📊 *الإحصائيات:*\n`;
-    message += `• عدد الحضور: ${attendanceCount} درس\n`;
-    message += `• الواجبات المرسلة: ${submissionsCount} واجب\n\n`;
+    message += `✅ *حالة الحساب:*\\n`;
+    message += `• التفعيل: ${userInfo.is_verified ? '✅ مفعل' : '❌ غير مفعل'}\\n`;
+    message += `• التذكيرات: ${userInfo.reminders_enabled ? '🔔 مفعلة' : '🔕 معطلة'}\\n\\n`;
     
-    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-    message += `💡 للمساعدة: ${config.admin.supportChannel}`;
+    message += `📊 *الإحصائيات:*\\n`;
+    message += `• عدد الحضور: ${attendanceCount} درس\\n`;
+    message += `• الواجبات المرسلة: ${submissionsCount} واجب\\n\\n`;
+    
+    message += `━━━━━━━━━━━━━━━━━━━━\\n\\n`;
+    message += `💡 للمساعدة: ${config.admin.supportChannel.replace(/@/g, '\\@')}`;
 
     await ctx.reply(message, { 
-      parse_mode: 'Markdown',
+      parse_mode: 'MarkdownV2',
       disable_web_page_preview: true 
     });
 

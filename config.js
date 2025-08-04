@@ -2,19 +2,49 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Validate and parse environment variables
+function validateEnvVar(name, value, required = true, defaultValue = '') {
+  if (required && (!value || value.trim() === '')) {
+    console.error(`❌ متغير البيئة ${name} مطلوب ولكنه غير موجود`);
+    if (required) {
+      process.exit(1);
+    }
+  }
+  return value || defaultValue;
+}
+
+function parseAdminUserIds(userIdsStr) {
+  if (!userIdsStr) return [];
+  
+  try {
+    return userIdsStr.split(',')
+      .map(id => parseInt(id.trim()))
+      .filter(id => !isNaN(id) && id > 0);
+  } catch (error) {
+    console.error('❌ خطأ في تحليل معرفات المدراء:', error);
+    return [];
+  }
+}
+
 export const config = {
-  botToken: process.env.BOT_TOKEN || '',
+  botToken: validateEnvVar('BOT_TOKEN', process.env.BOT_TOKEN, true),
   admin: {
-    userIds: process.env.ADMIN_USER_IDS ? process.env.ADMIN_USER_IDS.split(',').map(id => parseInt(id.trim())) : [],
-    groupId: process.env.GROUP_ID || '',
-    supportChannel: process.env.SUPPORT_CHANNEL || '@SupportChannel',
-    chatId: process.env.ADMIN_CHAT_ID || ''
+    userIds: parseAdminUserIds(process.env.ADMIN_USER_IDS),
+    groupId: validateEnvVar('GROUP_ID', process.env.GROUP_ID, false),
+    supportChannel: validateEnvVar('SUPPORT_CHANNEL', process.env.SUPPORT_CHANNEL, false, '@SupportChannel'),
+    chatId: validateEnvVar('ADMIN_CHAT_ID', process.env.ADMIN_CHAT_ID, false)
   },
   users: {
-    activationCode: process.env.ACTIVATION_CODE || 'DEFAULT_CODE'
+    activationCode: validateEnvVar('ACTIVATION_CODE', process.env.ACTIVATION_CODE, true, 'DEFAULT_CODE')
   },
   zoom: {
-    fullLink: process.env.ZOOM_LINK || 'https://zoom.us/j/example'
+    fullLink: validateEnvVar('ZOOM_LINK', process.env.ZOOM_LINK, false, 'https://zoom.us/j/example')
+  },
+  // Rate limiting configuration
+  rateLimiting: {
+    enabled: process.env.RATE_LIMITING_ENABLED !== 'false',
+    maxRequestsPerMinute: parseInt(process.env.MAX_REQUESTS_PER_MINUTE) || 30,
+    maxRequestsPerHour: parseInt(process.env.MAX_REQUESTS_PER_HOUR) || 100
   },
   faq: [
     {
