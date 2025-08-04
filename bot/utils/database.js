@@ -144,6 +144,30 @@ async function createTables() {
       )
     `);
 
+    // Custom reminders table
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS custom_reminders (
+        reminder_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        reminder_datetime DATETIME NOT NULL,
+        message TEXT NOT NULL,
+        is_sent BOOLEAN DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+      )
+    `);
+
+    // Feedback table
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS feedback (
+        feedback_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        message TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+      )
+    `);
+
     console.log('✅ تم إنشاء جداول قاعدة البيانات بنجاح');
   } catch (error) {
     console.error('❌ خطأ في إنشاء الجداول:', error);
@@ -464,6 +488,193 @@ export async function getVerifiedUsersWithReminders() {
   } catch (error) {
     console.error('خطأ في جلب المستخدمين للتذكيرات:', error);
     return [];
+  }
+}
+
+// Course management functions
+export async function deleteCourse(courseId) {
+  try {
+    // Delete related assignments first
+    await db.run('DELETE FROM assignments WHERE course_id = ?', [courseId]);
+    
+    // Delete related submissions
+    await db.run('DELETE FROM submissions WHERE assignment_id IN (SELECT assignment_id FROM assignments WHERE course_id = ?)', [courseId]);
+    
+    // Delete related attendance
+    await db.run('DELETE FROM attendance WHERE lesson_id IN (SELECT lesson_id FROM lessons WHERE course_id = ?)', [courseId]);
+    
+    // Delete lessons
+    const result = await db.run('DELETE FROM lessons WHERE course_id = ?', [courseId]);
+    
+    return result.changes > 0;
+  } catch (error) {
+    console.error('خطأ في حذف الكورس:', error);
+    return false;
+  }
+}
+
+export async function getCourses() {
+  try {
+    const courses = await db.all(`
+      SELECT DISTINCT course_id, 
+             COUNT(DISTINCT l.lesson_id) as lesson_count,
+             COUNT(DISTINCT a.assignment_id) as assignment_count
+      FROM lessons l
+      LEFT JOIN assignments a ON l.course_id = a.course_id
+      GROUP BY course_id
+      ORDER BY course_id
+    `);
+    return courses;
+  } catch (error) {
+    console.error('خطأ في جلب الكورسات:', error);
+    return [];
+  }
+}
+
+// Custom reminders functions
+export async function addCustomReminder(userId, dateTime, message) {
+  try {
+    const result = await db.run(
+      'INSERT INTO custom_reminders (user_id, reminder_datetime, message, is_sent) VALUES (?, ?, ?, 0)',
+      [userId, dateTime, message]
+    );
+    return result.lastID;
+  } catch (error) {
+    console.error('خطأ في إضافة تذكير مخصص:', error);
+    return null;
+  }
+}
+
+export async function getCustomReminders(userId) {
+  try {
+    const reminders = await db.all(
+      'SELECT * FROM custom_reminders WHERE user_id = ? ORDER BY reminder_datetime ASC',
+      [userId]
+    );
+    return reminders;
+  } catch (error) {
+    console.error('خطأ في جلب التذكيرات المخصصة:', error);
+    return [];
+  }
+}
+
+export async function deleteCustomReminder(reminderId, userId) {
+  try {
+    const result = await db.run(
+      'DELETE FROM custom_reminders WHERE reminder_id = ? AND user_id = ?',
+      [reminderId, userId]
+    );
+    return result.changes > 0;
+  } catch (error) {
+    console.error('خطأ في حذف التذكير المخصص:', error);
+    return false;
+  }
+}
+
+// Feedback functions
+export async function addFeedback(userId, message) {
+  try {
+    const result = await db.run(
+      'INSERT INTO feedback (user_id, message, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+      [userId, message]
+    );
+    return result.lastID;
+  } catch (error) {
+    console.error('خطأ في إضافة التغذية الراجعة:', error);
+    return null;
+  }
+}
+
+export async function getFeedback() {
+  try {
+    const feedback = await db.all(`
+      SELECT f.*, u.username, u.first_name 
+      FROM feedback f 
+      LEFT JOIN users u ON f.user_id = u.user_id 
+      ORDER BY f.created_at DESC
+    `);
+    return feedback;
+  } catch (error) {
+    console.error('خطأ في جلب التغذية الراجعة:', error);
+    return [];
+  }
+}
+
+// Export functions
+export async function exportAttendanceData() {
+  try {
+    const data = await db.all(`
+      SELECT u.user_id, u.username, u.first_name, l.title as lesson_title, 
+             l.date, l.time, a.attended_at
+      FROM users u
+      LEFT JOIN attendance a ON u.user_id = a.user_id
+      LEFT JOIN lessons l ON a.lesson_id = l.lesson_id
+      WHERE u.is_verified = 1
+      ORDER BY l.date, l.time, u.first_name
+    `);
+    return data;
+  } catch (error) {
+    console.error('خطأ في تصدير بيانات الحضور:', error);
+    return [];
+  }
+}
+
+export async function exportAssignmentsData() {
+  try {
+    const data = await db.all(`
+      SELECT u.user_id, u.username, u.first_name, a.title as assignment_title,
+             s.answer, s.submitted_at, s.score
+      FROM users u
+      LEFT JOIN submissions s ON u.user_id = s.user_id
+      LEFT JOIN assignments a ON s.assignment_id = a.assignment_id
+      WHERE u.is_verified = 1
+      ORDER BY a.title, u.first_name
+    `);
+    return data;
+  } catch (error) {
+    console.error('خطأ في تصدير بيانات الواجبات:', error);
+    return [];
+  }
+}
+
+// User settings functions
+export async function updateUserSettings(userId, settings) {
+  try {
+    const updates = [];
+    const values = [];
+    
+    if (settings.hasOwnProperty('reminders_enabled')) {
+      updates.push('reminders_enabled = ?');
+      values.push(settings.reminders_enabled ? 1 : 0);
+    }
+    
+    if (updates.length === 0) return false;
+    
+    values.push(userId);
+    const result = await db.run(
+      `UPDATE users SET ${updates.join(', ')} WHERE user_id = ?`,
+      values
+    );
+    
+    return result.changes > 0;
+  } catch (error) {
+    console.error('خطأ في تحديث إعدادات المستخدم:', error);
+    return false;
+  }
+}
+
+export async function getUserSettings(userId) {
+  try {
+    const user = await db.get(
+      'SELECT reminders_enabled FROM users WHERE user_id = ?',
+      [userId]
+    );
+    return user ? {
+      reminders_enabled: Boolean(user.reminders_enabled)
+    } : null;
+  } catch (error) {
+    console.error('خطأ في جلب إعدادات المستخدم:', error);
+    return null;
   }
 }
 

@@ -24,6 +24,11 @@ import { handleCourses } from './bot/commands/courses.js';
 import { handleAssignments } from './bot/commands/assignments.js';
 import { handleReminders } from './bot/commands/reminders.js';
 import { handleHelp } from './bot/commands/help.js';
+import { handleDeleteCourse } from './bot/commands/deletecourse.js';
+import { handleAddReminder } from './bot/commands/addreminder.js';
+import { handleExport } from './bot/commands/export.js';
+import { handleFeedback, handleViewFeedback } from './bot/commands/feedback.js';
+import { handleSettings } from './bot/commands/settings.js';
 
 // Validate environment variables
 function validateConfig() {
@@ -147,6 +152,9 @@ function registerCommands(bot) {
   bot.command('attendance', handleAttendance);
   bot.command('reminders', handleReminders);
   bot.command('submit', handleSubmit);
+  bot.command('addreminder', handleAddReminder);
+  bot.command('feedback', handleFeedback);
+  bot.command('settings', handleSettings);
   
   // Admin commands (verification + admin privileges required)
   bot.command('stats', requireAdmin, handleStats);
@@ -154,6 +162,9 @@ function registerCommands(bot) {
   bot.command('addassignment', requireAdmin, handleAddAssignment);
   bot.command('updateassignment', requireAdmin, handleUpdateAssignment);
   bot.command('deleteassignment', requireAdmin, handleDeleteAssignment);
+  bot.command('deletecourse', requireAdmin, handleDeleteCourse);
+  bot.command('export', requireAdmin, handleExport);
+  bot.command('viewfeedback', requireAdmin, handleViewFeedback);
   
   // Handle unknown commands
   bot.on('text', async (ctx) => {
@@ -169,8 +180,9 @@ function registerCommands(bot) {
     // List of known commands
     const knownCommands = [
       '/start', '/verify', '/help', '/faq', '/profile', '/courses', 
-      '/assignments', '/attendance', '/reminders', '/submit',
-      '/stats', '/publish', '/addassignment', '/updateassignment', '/deleteassignment'
+      '/assignments', '/attendance', '/reminders', '/submit', '/addreminder',
+      '/feedback', '/settings', '/stats', '/publish', '/addassignment', 
+      '/updateassignment', '/deleteassignment', '/deletecourse', '/export', '/viewfeedback'
     ];
     
     if (!knownCommands.includes(command)) {
@@ -187,12 +199,18 @@ function registerCommands(bot) {
         `• \`/assignments\` \\- قائمة الواجبات\\n` +
         `• \`/attendance\` \\- تسجيل الحضور\\n` +
         `• \`/reminders\` \\- تبديل التذكيرات\\n` +
+        `• \`/addreminder\` \\- إضافة تذكير مخصص\\n` +
         `• \`/submit\` \\- إرسال إجابة واجب\\n` +
+        `• \`/feedback\` \\- إرسال تغذية راجعة\\n` +
+        `• \`/settings\` \\- إعدادات المستخدم\\n` +
         `• \`/faq\` \\- الأسئلة الشائعة\\n\\n` +
         `⚙️ *أوامر المدير:*\\n` +
         `• \`/stats\` \\- عرض الإحصائيات\\n` +
         `• \`/publish\` \\- نشر إعلان\\n` +
-        `• إدارة الواجبات \\(add/update/delete\\)\\n\\n` +
+        `• \`/export\` \\- تصدير البيانات\\n` +
+        `• \`/viewfeedback\` \\- عرض التغذية الراجعة\\n` +
+        `• إدارة الواجبات \\(add/update/delete\\)\\n` +
+        `• \`/deletecourse\` \\- حذف الكورس\\n\\n` +
         `💡 استخدم \`/help\` للحصول على دليل مفصل\\n\\n` +
         `للمساعدة: ${config.admin.supportChannel.replace(/@/g, '\\@')}`,
         { parse_mode: 'MarkdownV2' }

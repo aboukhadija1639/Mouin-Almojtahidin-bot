@@ -22,22 +22,29 @@ export async function handleHelp(ctx) {
       message += `• 📝 /submit رقم_الواجب الإجابة - ${escapeMarkdownV2('إرسال إجابة (مثال: /submit 1 إجابتي)')}\n`;
       message += `• 📚 /courses - ${escapeMarkdownV2('قائمة الدروس')}\n`;
       message += `• 📋 /assignments - ${escapeMarkdownV2('قائمة الواجبات')}\n`;
-      message += `• ❓ /faq - ${escapeMarkdownV2('الأسئلة الشائعة')}\n`;
-      message += `• 🔔 /reminders - ${escapeMarkdownV2('تفعيل/إيقاف التذكيرات')}\n\n`;
+      message += `• 🔔 /reminders - ${escapeMarkdownV2('تفعيل/إيقاف التذكيرات')}\n`;
+      message += `• ⏰ /addreminder التاريخ_الوقت الرسالة - ${escapeMarkdownV2('إضافة تذكير مخصص')}\n`;
+      message += `• 💬 /feedback رسالتك - ${escapeMarkdownV2('إرسال تغذية راجعة')}\n`;
+      message += `• ⚙️ /settings - ${escapeMarkdownV2('إعدادات المستخدم')}\n`;
+      message += `• ❓ /faq - ${escapeMarkdownV2('الأسئلة الشائعة')}\n\n`;
     } else {
       message += `🔒 *${escapeMarkdownV2('يجب التفعيل أولاً (استخدم /verify):')}*\n\n`;
     }
     if (isAdmin) {
       message += `⚙️ *${escapeMarkdownV2('أوامر المدير:')}*\n`;
       message += `• 📊 /stats - ${escapeMarkdownV2('عرض إحصائيات البوت')}\n`;
-      message += `• 📢 /publish نص_الإعلان - ${escapeMarkdownV2('نشر إعلان (مثال: /publish الدرس القادم غدًا)')}\n\n`;
+      message += `• 📢 /publish نص_الإعلان - ${escapeMarkdownV2('نشر إعلان (مثال: /publish الدرس القادم غدًا)')}\n`;
+      message += `• 📊 /export نوع_البيانات - ${escapeMarkdownV2('تصدير البيانات (attendance/assignments)')}\n`;
+      message += `• 📬 /viewfeedback - ${escapeMarkdownV2('عرض التغذية الراجعة')}\n`;
+      message += `• 🗑️ /deletecourse رقم_الكورس - ${escapeMarkdownV2('حذف الكورس')}\n`;
+      message += `• 📝 إدارة الواجبات: /addassignment, /updateassignment, /deleteassignment\n\n`;
     }
     message += '━━━━━━━━━━━━━━━━━━━━\n';
     message += `💡 *${escapeMarkdownV2('نصائح:')}*\n`;
     message += `- ${escapeMarkdownV2('احفظ كود التفعيل بأمان')}\n`;
     message += `- ${escapeMarkdownV2('تابع مواعيد الدروس والواجبات')}\n`;
     message += `- ${escapeMarkdownV2('تواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)} ${escapeMarkdownV2('للدعم')}\n\n`;
-    message += `🤖 *${escapeMarkdownV2('بوت معين المجتهدين - v1.0.0')}*\n`;
+    message += `🤖 *${escapeMarkdownV2('بوت معين المجتهدين - v2.0.0')}*\n`;
     message += `📅 *${escapeMarkdownV2('آخر تحديث:')}* ${escapeMarkdownV2(new Date().toLocaleDateString('ar-SA'))}`;
 
     await ctx.reply(message, {
