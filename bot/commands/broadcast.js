@@ -1,6 +1,6 @@
 // bot/commands/broadcast.js
 import { getAllVerifiedUsers } from '../utils/database.js';
-import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
+import { escapeMarkdownV2, bold, italic, code } from '../utils/escapeMarkdownV2.js';
 import { config } from '../../config.js';
 
 export async function handleBroadcast(ctx) {
@@ -11,11 +11,9 @@ export async function handleBroadcast(ctx) {
     // Check if user is admin
     if (!config.admin.userIds.includes(userId)) {
       await ctx.reply(
-        escapeMarkdownV2(
-          `🚫 *غير مسموح*\n\n` +
-          `هذا الأمر مخصص للمدراء فقط.\n` +
-          `للمساعدة، تواصل مع ${config.admin.supportChannel}`
-        ),
+        `🚫 ${bold('غير مسموح')}\n\n` +
+        `هذا الأمر مخصص للمدراء فقط\\.\n\n` +
+        `📞 للمساعدة، تواصل مع ${escapeMarkdownV2(config.admin.supportChannel)}`,
         { parse_mode: 'MarkdownV2' }
       );
       return;
@@ -25,16 +23,16 @@ export async function handleBroadcast(ctx) {
     const args = messageText.split(' ');
     if (args.length < 3) {
       await ctx.reply(
-        escapeMarkdownV2(
-          `📢 *كيفية استخدام البث*\n\n` +
-          `الصيغة الصحيحة: \`/broadcast <group|users> <message>\`\n\n` +
-          `*الخيارات:*\n` +
-          `• \`group\` - إرسال للمجموعة الرئيسية\n` +
-          `• \`users\` - إرسال لجميع المستخدمين المفعلين\n\n` +
-          `*أمثلة:*\n` +
-          `\`/broadcast group الدرس غداً في الساعة 8 مساءً\`\n` +
-          `\`/broadcast users تذكير: موعد التسليم غداً\``
-        ),
+        `📢 ${bold('كيفية استخدام البث')}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `📝 ${bold('الصيغة الصحيحة:')}\n` +
+        `${code('/broadcast <group|users> <message>')}\n\n` +
+        `🎯 ${bold('الخيارات:')}\n` +
+        `• ${code('group')} \\- إرسال للمجموعة الرئيسية\n` +
+        `• ${code('users')} \\- إرسال لجميع المستخدمين المفعلين\n\n` +
+        `💡 ${bold('أمثلة:')}\n` +
+        `${code('/broadcast group الدرس غداً في الساعة 8 مساءً')}\n` +
+        `${code('/broadcast users تذكير: موعد التسليم غداً')}`,
         { parse_mode: 'MarkdownV2' }
       );
       return;
@@ -45,11 +43,9 @@ export async function handleBroadcast(ctx) {
 
     if (!['group', 'users'].includes(target)) {
       await ctx.reply(
-        escapeMarkdownV2(
-          `❌ *خيار غير صحيح*\n\n` +
-          `الخيارات المتاحة: \`group\` أو \`users\`\n` +
-          `استخدم \`/broadcast\` بدون معاملات لمعرفة التفاصيل.`
-        ),
+        `❌ ${bold('خيار غير صحيح')}\n\n` +
+        `الخيارات المتاحة: ${code('group')} أو ${code('users')}\n\n` +
+        `استخدم ${code('/broadcast')} بدون معاملات لمعرفة التفاصيل\\.`,
         { parse_mode: 'MarkdownV2' }
       );
       return;
@@ -57,10 +53,8 @@ export async function handleBroadcast(ctx) {
 
     if (message.trim().length === 0) {
       await ctx.reply(
-        escapeMarkdownV2(
-          `❌ *الرسالة فارغة*\n\n` +
-          `يرجى كتابة الرسالة المراد إرسالها.`
-        ),
+        `❌ ${bold('الرسالة فارغة')}\n\n` +
+        `يرجى كتابة الرسالة المراد إرسالها\\.`,
         { parse_mode: 'MarkdownV2' }
       );
       return;
@@ -76,8 +70,8 @@ export async function handleBroadcast(ctx) {
         try {
           await ctx.telegram.sendMessage(
             config.admin.chatId,
-            `📢 *إعلان من الإدارة*\n\n${message}`,
-            { parse_mode: 'Markdown' }
+            `📢 ${bold('إعلان من الإدارة')}\n\n${escapeMarkdownV2(message)}`,
+            { parse_mode: 'MarkdownV2' }
           );
           successCount = 1;
           totalTargets = 1;
@@ -88,10 +82,8 @@ export async function handleBroadcast(ctx) {
         }
       } else {
         await ctx.reply(
-          escapeMarkdownV2(
-            `❌ *معرف المجموعة غير محدد*\n\n` +
-            `لم يتم تحديد معرف المجموعة الرئيسية في الإعدادات.`
-          ),
+          `❌ ${bold('معرف المجموعة غير محدد')}\n\n` +
+          `لم يتم تحديد معرف المجموعة الرئيسية في الإعدادات\\.`,
           { parse_mode: 'MarkdownV2' }
         );
         return;
@@ -103,10 +95,8 @@ export async function handleBroadcast(ctx) {
 
       if (users.length === 0) {
         await ctx.reply(
-          escapeMarkdownV2(
-            `❌ *لا يوجد مستخدمون مفعلون*\n\n` +
-            `لا يوجد مستخدمون مفعلون لإرسال الرسالة إليهم.`
-          ),
+          `❌ ${bold('لا يوجد مستخدمون مفعلون')}\n\n` +
+          `لا يوجد مستخدمون مفعلون لإرسال الرسالة إليهم\\.`,
           { parse_mode: 'MarkdownV2' }
         );
         return;
@@ -114,11 +104,9 @@ export async function handleBroadcast(ctx) {
 
       // Send status message
       await ctx.reply(
-        escapeMarkdownV2(
-          `📤 *جاري الإرسال...*\n\n` +
-          `عدد المستخدمين المستهدفين: ${users.length}\n` +
-          `سيتم إرسال تقرير عند الانتهاء.`
-        ),
+        `📤 ${bold('جاري الإرسال...')}\n\n` +
+        `👥 عدد المستخدمين المستهدفين: ${totalTargets}\n\n` +
+        `⏳ سيتم إرسال تقرير عند الانتهاء\\.`,
         { parse_mode: 'MarkdownV2' }
       );
 
@@ -127,8 +115,8 @@ export async function handleBroadcast(ctx) {
         try {
           await ctx.telegram.sendMessage(
             user.user_id,
-            `📢 *رسالة من إدارة معين المجتهدين*\n\n${message}`,
-            { parse_mode: 'Markdown' }
+            `📢 ${bold('رسالة من إدارة معين المجتهدين')}\n\n${escapeMarkdownV2(message)}`,
+            { parse_mode: 'MarkdownV2' }
           );
           successCount++;
           
@@ -142,23 +130,25 @@ export async function handleBroadcast(ctx) {
     }
 
     // Send completion report
+    const successRate = totalTargets > 0 ? Math.round((successCount / totalTargets) * 100) : 0;
     await ctx.reply(
-      escapeMarkdownV2(
-        `✅ *تم إنجاز البث*\n\n` +
-        `📊 *تقرير الإرسال:*\n` +
-        `• المستهدفون: ${totalTargets}\n` +
-        `• نجح الإرسال: ${successCount}\n` +
-        `• فشل الإرسال: ${failCount}\n` +
-        `• معدل النجاح: ${totalTargets > 0 ? Math.round((successCount / totalTargets) * 100) : 0}%\n\n` +
-        `📝 *الرسالة المرسلة:*\n${message}`
-      ),
+      `✅ ${bold('تم إنجاز البث')}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `📊 ${bold('تقرير الإرسال:')}\n` +
+      `• المستهدفون: ${totalTargets}\n` +
+      `• نجح الإرسال: ${successCount}\n` +
+      `• فشل الإرسال: ${failCount}\n` +
+      `• معدل النجاح: ${successRate}%\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `📝 ${bold('الرسالة المرسلة:')}\n${escapeMarkdownV2(message)}`,
       { parse_mode: 'MarkdownV2' }
     );
 
   } catch (error) {
     console.error('خطأ في أمر /broadcast:', error);
     await ctx.reply(
-      escapeMarkdownV2(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`),
+      `❌ ${bold('حدث خطأ')}\n\n` +
+      `حاول مرة أخرى أو تواصل مع ${escapeMarkdownV2(config.admin.supportChannel)}`,
       { parse_mode: 'MarkdownV2' }
     );
   }

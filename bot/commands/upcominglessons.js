@@ -1,65 +1,80 @@
 // bot/commands/upcominglessons.js
 import { getUpcomingLessons } from '../utils/database.js';
-import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
+import { escapeMarkdownV2, bold, italic, code } from '../utils/escapeMarkdownV2.js';
 import { config } from '../../config.js';
 
-export async function handleUpcomingLessons(ctx) {
+export async function handleUpcominglessons(ctx) {
   try {
-    // Get upcoming lessons for the next 7 days
+    const userId = ctx.from.id;
+    
+    // Get upcoming lessons (next 7 days)
     const lessons = await getUpcomingLessons(7);
     
-    if (lessons.length === 0) {
+    if (!lessons || lessons.length === 0) {
       await ctx.reply(
-        escapeMarkdownV2(
-          `📅 *الدروس القادمة*\n\n` +
-          `لا توجد دروس مجدولة خلال الأسبوع القادم.\n\n` +
-          `💡 تابع الإعلانات للحصول على آخر التحديثات.\n` +
-          `📞 للاستفسار: ${config.admin.supportChannel}`
-        ),
+        `📅 ${bold('الدروس القادمة')}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `📭 ${italic('لا توجد دروس مجدولة في الأيام السبعة القادمة')}\n\n` +
+        `💡 ${bold('للمزيد من المعلومات:')}\n` +
+        `• استخدم ${code('/courses')} لعرض جميع الدورات\n` +
+        `• تواصل مع ${escapeMarkdownV2(config.admin.supportChannel)}\n\n` +
+        `📞 للمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}`,
         { parse_mode: 'MarkdownV2' }
       );
       return;
     }
 
-    let message = escapeMarkdownV2(
-      `📅 *الدروس القادمة*\n\n` +
-      `إليك الدروس المجدولة خلال الأسبوع القادم:\n\n`
-    );
+    let message = `📅 ${bold('الدروس القادمة')}\n\n`;
+    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    message += `📊 ${bold(`${lessons.length} درس مجدول في الأيام السبعة القادمة:`)}\n\n`;
 
     lessons.forEach((lesson, index) => {
-      const lessonDate = new Date(lesson.date);
+      const lessonDate = new Date(`${lesson.date} ${lesson.time}`);
       const formattedDate = lessonDate.toLocaleDateString('ar-SA', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric'
       });
-      
-      const formattedTime = lesson.time;
-      const courseName = lesson.course_name || 'غير محدد';
-      
-      message += escapeMarkdownV2(
-        `${index + 1}. *${lesson.title}*\n` +
-        `   📚 الكورس: ${courseName}\n` +
-        `   📅 التاريخ: ${formattedDate}\n` +
-        `   ⏰ الوقت: ${formattedTime}\n`
-      );
+      const formattedTime = lessonDate.toLocaleTimeString('ar-SA', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
 
+      // Calculate days until lesson
+      const today = new Date();
+      const timeDiff = lessonDate.getTime() - today.getTime();
+      const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+      
+      let timeIndicator = '';
+      if (daysDiff === 0) {
+        timeIndicator = '🔴 اليوم';
+      } else if (daysDiff === 1) {
+        timeIndicator = '🟡 غداً';
+      } else if (daysDiff <= 3) {
+        timeIndicator = `🟠 خلال ${daysDiff} أيام`;
+      } else {
+        timeIndicator = `🟢 خلال ${daysDiff} أيام`;
+      }
+
+      message += `${index + 1}\\. ${bold(escapeMarkdownV2(lesson.title))}\n`;
+      message += `   📅 ${formattedDate}\n`;
+      message += `   ⏰ ${formattedTime}\n`;
+      message += `   ⏳ ${timeIndicator}\n`;
+      
       if (lesson.zoom_link) {
-        message += escapeMarkdownV2(`   🔗 رابط الزوم: ${lesson.zoom_link}\n`);
+        message += `   🔗 ${code('رابط الحضور متوفر')}\n`;
       }
       
-      message += '\n';
+      message += `\n`;
     });
 
-    message += escapeMarkdownV2(
-      `━━━━━━━━━━━━━━━━━━━━\n\n` +
-      `📝 *ملاحظات مهمة:*\n` +
-      `• تأكد من حضور الدروس في الوقت المحدد\n` +
-      `• احتفظ بروابط الزوم في مكان آمن\n` +
-      `• للتذكيرات، استخدم \`/reminders\`\n\n` +
-      `📞 للمساعدة: ${config.admin.supportChannel}`
-    );
+    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    message += `💡 ${bold('ملاحظات مهمة:')}\n`;
+    message += `• 🔔 ستصلك تذكيرات قبل كل درس\n`;
+    message += `• 📝 لا تنس تسجيل الحضور باستخدام ${code('/attendance')}\n`;
+    message += `• 📚 راجع المواد قبل الدرس\n\n`;
+    message += `📞 للمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}`;
 
     await ctx.reply(message, { 
       parse_mode: 'MarkdownV2',
@@ -69,7 +84,8 @@ export async function handleUpcomingLessons(ctx) {
   } catch (error) {
     console.error('خطأ في أمر /upcominglessons:', error);
     await ctx.reply(
-      escapeMarkdownV2(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`),
+      `❌ ${bold('حدث خطأ أثناء جلب الدروس القادمة')}\n\n` +
+      `حاول مرة أخرى أو تواصل مع ${escapeMarkdownV2(config.admin.supportChannel)}`,
       { parse_mode: 'MarkdownV2' }
     );
   }

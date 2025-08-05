@@ -173,31 +173,72 @@ async function setupWebhookServer(bot, port = 3000) {
 
 // Launch bot with retry logic and webhook fallback
 async function launchBotWithRetry(bot, maxRetries = 5) {
+  console.log('🚀 Starting bot launch process...');
+  
+  // First, validate bot token
+  try {
+    console.log('🔐 Validating bot token...');
+    const botInfo = await bot.telegram.getMe();
+    console.log(`✅ Bot token valid: @${botInfo.username} (${botInfo.first_name})`);
+  } catch (error) {
+    console.error('❌ Invalid bot token:', error.message);
+    logError(error, 'BOT_TOKEN_VALIDATION');
+    throw new Error('Invalid bot token - please check BOT_TOKEN in .env file');
+  }
+
+  // Try polling mode first
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`Attempting to launch bot with polling (Attempt ${attempt}/${maxRetries})`);
+      console.log(`🔄 Attempting to launch bot with polling (Attempt ${attempt}/${maxRetries})`);
+      
+      // Clear any existing webhooks first
+      try {
+        await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+        console.log('🧹 Cleared existing webhooks');
+      } catch (webhookError) {
+        console.warn('⚠️ Could not clear webhooks:', webhookError.message);
+      }
+      
+      // Launch with timeout
       await Promise.race([
-        bot.launch({ dropPendingUpdates: true }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Bot launch timed out after 60 seconds')), 60000))
+        bot.launch({ 
+          dropPendingUpdates: true,
+          allowedUpdates: ['message', 'callback_query', 'inline_query']
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Bot launch timed out after 60 seconds')), 60000)
+        )
       ]);
+      
       console.log('✅ Bot launched successfully with polling');
       logActivity('Bot launched successfully with polling');
+      
+      // Test bot responsiveness
+      try {
+        await bot.telegram.getMe();
+        console.log('✅ Bot responsiveness test passed');
+      } catch (testError) {
+        console.warn('⚠️ Bot responsiveness test failed:', testError.message);
+      }
+      
       return { success: true, mode: 'polling' };
+      
     } catch (error) {
       console.error(`❌ Failed to launch bot with polling (Attempt ${attempt}):`, {
         message: error.message,
-        stack: error.stack,
+        code: error.code,
         response: error.response ? {
           status: error.response.status,
+          statusText: error.response.statusText,
           data: error.response.data,
         } : 'No response data',
       });
       logError(error, `BOT_LAUNCH_ATTEMPT_${attempt}`);
       
       if (attempt < maxRetries) {
-        // Exponential backoff: 5s, 10s, 20s, 40s, 80s
-        const delay = Math.pow(2, attempt) * 5000;
-        console.log(`Retrying launch in ${delay/1000} seconds...`);
+        // Progressive backoff: 3s, 6s, 12s, 24s, 48s
+        const delay = Math.min(Math.pow(2, attempt) * 3000, 60000);
+        console.log(`⏳ Retrying launch in ${delay/1000} seconds...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       } else {
         console.log('❌ Max polling retries reached, attempting webhook fallback...');
@@ -205,38 +246,55 @@ async function launchBotWithRetry(bot, maxRetries = 5) {
         
         // Try webhook mode as fallback
         try {
-          const webhookServer = await setupWebhookServer(bot);
-          if (webhookServer) {
-            // For local development, you might want to use ngrok or similar
-            // For production, use your actual domain
-            const webhookUrl = process.env.WEBHOOK_URL || `http://localhost:3000/bot`;
-            
-            if (process.env.WEBHOOK_URL) {
-              await bot.telegram.setWebhook(webhookUrl);
-              console.log('✅ Bot launched successfully with webhook mode');
-              logActivity(`Bot launched with webhook: ${webhookUrl}`);
-              return { success: true, mode: 'webhook', server: webhookServer };
-            } else {
-              console.warn('⚠️ WEBHOOK_URL not set, webhook server running locally only');
-              logActivity('Webhook server running locally, WEBHOOK_URL not configured');
-              return { success: true, mode: 'webhook-local', server: webhookServer };
-            }
+          const webhookResult = await setupWebhookFallback(bot);
+          if (webhookResult.success) {
+            return webhookResult;
           }
         } catch (webhookError) {
-          console.error('❌ Webhook fallback failed:', webhookError);
-          logError(webhookError, 'WEBHOOK_FALLBACK');
+          console.error('❌ Webhook fallback also failed:', webhookError.message);
+          logError(webhookError, 'WEBHOOK_FALLBACK_FAILED');
         }
-        
-        // Final fallback to manual polling
-        console.log('Attempting manual polling as last resort...');
-        const manualSuccess = await manualPolling(bot);
-        return { 
-          success: manualSuccess, 
-          mode: manualSuccess ? 'manual-polling' : 'failed' 
-        };
       }
     }
   }
+  
+  // If all attempts failed
+  const finalError = new Error('Failed to launch bot after all retry attempts');
+  logError(finalError, 'BOT_LAUNCH_FINAL_FAILURE');
+  throw finalError;
+}
+
+// Enhanced webhook fallback setup
+async function setupWebhookFallback(bot) {
+  console.log('🔄 Setting up webhook fallback...');
+  
+  try {
+    const webhookServer = await setupWebhookServer(bot);
+    if (webhookServer) {
+      // For local development, you might want to use ngrok or similar
+      // For production, use your actual domain
+      const webhookUrl = process.env.WEBHOOK_URL || `http://localhost:3000/bot`;
+      
+      if (process.env.WEBHOOK_URL) {
+        await bot.telegram.setWebhook(webhookUrl, {
+          drop_pending_updates: true,
+          allowed_updates: ['message', 'callback_query', 'inline_query']
+        });
+        console.log('✅ Bot launched successfully with webhook mode');
+        logActivity(`Bot launched with webhook: ${webhookUrl}`);
+        return { success: true, mode: 'webhook', server: webhookServer };
+      } else {
+        console.warn('⚠️ WEBHOOK_URL not set, webhook server running locally only');
+        logActivity('Webhook server started locally without external URL');
+        return { success: true, mode: 'local_webhook', server: webhookServer };
+      }
+    }
+  } catch (error) {
+    console.error('❌ Webhook setup failed:', error.message);
+    throw error;
+  }
+  
+  return { success: false };
 }
 
 // Initialize bot

@@ -1,9 +1,9 @@
 // bot/commands/listreminders.js
 import { getUserReminders } from '../utils/database.js';
-import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
+import { escapeMarkdownV2, bold, italic, code } from '../utils/escapeMarkdownV2.js';
 import { config } from '../../config.js';
 
-export async function handleListReminders(ctx) {
+export async function handleListreminders(ctx) {
   try {
     const userId = ctx.from.id;
     
@@ -12,21 +12,20 @@ export async function handleListReminders(ctx) {
     
     if (reminders.length === 0) {
       await ctx.reply(
-        escapeMarkdownV2(
-          `📅 *قائمة التذكيرات الخاصة بك*\n\n` +
-          `لا توجد تذكيرات نشطة حالياً.\n\n` +
-          `💡 لإضافة تذكير جديد، استخدم:\n` +
-          `/addreminder التاريخ_الوقت الرسالة`
-        ),
+        `📅 ${bold('قائمة التذكيرات الخاصة بك')}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `📭 ${italic('لا توجد تذكيرات نشطة حالياً')}\n\n` +
+        `💡 ${bold('لإضافة تذكير جديد:')}\n` +
+        `${code('/addreminder التاريخ_الوقت الرسالة')}\n\n` +
+        `📞 للمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}`,
         { parse_mode: 'MarkdownV2' }
       );
       return;
     }
 
-    let message = escapeMarkdownV2(
-      `📅 *قائمة التذكيرات الخاصة بك*\n\n` +
-      `لديك ${reminders.length} تذكير نشط:\n\n`
-    );
+    let message = `📅 ${bold('قائمة التذكيرات الخاصة بك')}\n\n`;
+    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    message += `📊 ${bold(`لديك ${reminders.length} تذكير نشط:`)}\n\n`;
 
     reminders.forEach((reminder, index) => {
       const reminderDate = new Date(reminder.reminder_datetime);
@@ -36,20 +35,16 @@ export async function handleListReminders(ctx) {
         minute: '2-digit' 
       });
       
-      message += escapeMarkdownV2(
-        `${index + 1}. *${formattedDate}* في ${formattedTime}\n` +
-        `   📝 ${reminder.message}\n` +
-        `   🆔 ID: ${reminder.reminder_id}\n\n`
-      );
+      message += `${index + 1}\\. ${bold(formattedDate)} في ${formattedTime}\n`;
+      message += `   📝 ${escapeMarkdownV2(reminder.message)}\n`;
+      message += `   🆔 ID: ${code(reminder.reminder_id.toString())}\n\n`;
     });
 
-    message += escapeMarkdownV2(
-      `━━━━━━━━━━━━━━━━━━━━\n\n` +
-      `💡 *كيفية حذف تذكير:*\n` +
-      `استخدم: \`/deletereminder رقم_ID\`\n` +
-      `مثال: \`/deletereminder ${reminders[0].reminder_id}\`\n\n` +
-      `📞 للمساعدة: ${config.admin.supportChannel}`
-    );
+    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    message += `💡 ${bold('كيفية حذف تذكير:')}\n`;
+    message += `استخدم: ${code(`/deletereminder رقم_ID`)}\n`;
+    message += `مثال: ${code(`/deletereminder ${reminders[0].reminder_id}`)}\n\n`;
+    message += `📞 للمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}`;
 
     await ctx.reply(message, { 
       parse_mode: 'MarkdownV2',
@@ -59,7 +54,8 @@ export async function handleListReminders(ctx) {
   } catch (error) {
     console.error('خطأ في أمر /listreminders:', error);
     await ctx.reply(
-      escapeMarkdownV2(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`),
+      `❌ ${bold('حدث خطأ')}\n\n` +
+      `حاول مرة أخرى أو تواصل مع ${escapeMarkdownV2(config.admin.supportChannel)}`,
       { parse_mode: 'MarkdownV2' }
     );
   }

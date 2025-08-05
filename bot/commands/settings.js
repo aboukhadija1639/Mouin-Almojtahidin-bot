@@ -1,6 +1,6 @@
 import { updateUserSettings, getUserSettings, updateUserLanguage } from '../utils/database.js';
 import { config } from '../../config.js';
-import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
+import { escapeMarkdownV2, bold, italic, code } from '../utils/escapeMarkdownV2.js';
 
 export async function handleSettings(ctx) {
   try {
@@ -14,8 +14,8 @@ export async function handleSettings(ctx) {
 
       if (!settings) {
         await ctx.reply(
-          `❌ *${escapeMarkdownV2('لا يمكن تحميل إعداداتك')}*\n` +
-          `${escapeMarkdownV2('تأكد من أنك بدأت البوت باستخدام /start')}`,
+          `❌ ${bold('لا يمكن تحميل إعداداتك')}\n` +
+          `${escapeMarkdownV2('تأكد من أنك بدأت البوت باستخدام')} ${code('/start')}`,
           { parse_mode: 'MarkdownV2' }
         );
         return;
@@ -25,13 +25,16 @@ export async function handleSettings(ctx) {
       const languageStatus = settings.language === 'ar' ? '🇸🇦 العربية' : '🇺🇸 English';
 
       await ctx.reply(
-        `⚙️ *${escapeMarkdownV2('إعداداتك')}*\n` +
-        `🔔 *التذكيرات:* ${remindersStatus}\n` +
-        `🌐 *اللغة:* ${languageStatus}\n\n` +
-        `🛠️ *لتغيير الإعدادات:*\n` +
-        `• \`/settings reminders on/off\` للتذكيرات\n` +
-        `• \`/settings language ar/en\` للغة\n\n` +
-        `💡 يمكنك إضافة تذكيرات خاصة باستخدام \`/addreminder\``,
+        `⚙️ ${bold('إعداداتك الحالية')}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `🔔 ${bold('التذكيرات:')} ${remindersStatus}\n` +
+        `🌐 ${bold('اللغة:')} ${languageStatus}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `🛠️ ${bold('لتغيير الإعدادات:')}\n\n` +
+        `• ${code('/settings reminders on/off')} للتذكيرات\n` +
+        `• ${code('/settings language ar/en')} للغة\n\n` +
+        `💡 يمكنك إضافة تذكيرات خاصة باستخدام ${code('/addreminder')}\n\n` +
+        `📞 للمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}`,
         { parse_mode: 'MarkdownV2' }
       );
       return;
@@ -43,10 +46,10 @@ export async function handleSettings(ctx) {
     if (settingType === 'reminders') {
       if (!['on', 'off'].includes(settingValue)) {
         await ctx.reply(
-          `❌ *قيمة غير صحيحة*\n` +
-          `📝 استخدم:\n` +
-          `• \`/settings reminders on\`\n` +
-          `• \`/settings reminders off\``,
+          `❌ ${bold('قيمة غير صحيحة')}\n\n` +
+          `📝 ${bold('الاستخدام الصحيح:')}\n` +
+          `• ${code('/settings reminders on')}\n` +
+          `• ${code('/settings reminders off')}`,
           { parse_mode: 'MarkdownV2' }
         );
         return;
@@ -58,12 +61,13 @@ export async function handleSettings(ctx) {
       if (success) {
         const status = newValue ? '✅ تم تفعيل التذكيرات' : '🔕 تم إيقاف التذكيرات';
         await ctx.reply(
-          `✅ *${escapeMarkdownV2('تم تحديث إعداداتك بنجاح')}*\n${status}`,
+          `✅ ${bold('تم تحديث إعداداتك بنجاح')}\n\n${status}\n\n` +
+          `📝 يمكنك عرض إعداداتك باستخدام ${code('/settings')}`,
           { parse_mode: 'MarkdownV2' }
         );
       } else {
         await ctx.reply(
-          `❌ *${escapeMarkdownV2('حدث خطأ أثناء تحديث الإعدادات')}*\n` +
+          `❌ ${bold('حدث خطأ أثناء تحديث الإعدادات')}\n\n` +
           `يرجى المحاولة لاحقًا أو التواصل مع الدعم: ${escapeMarkdownV2(config.admin.supportChannel)}`,
           { parse_mode: 'MarkdownV2' }
         );
@@ -75,10 +79,10 @@ export async function handleSettings(ctx) {
     if (settingType === 'language') {
       if (!['ar', 'en'].includes(settingValue)) {
         await ctx.reply(
-          `❌ *قيمة غير صحيحة*\n` +
-          `📝 استخدم:\n` +
-          `• \`/settings language ar\` للعربية\n` +
-          `• \`/settings language en\` للإنجليزية`,
+          `❌ ${bold('قيمة غير صحيحة')}\n\n` +
+          `📝 ${bold('الاستخدام الصحيح:')}\n` +
+          `• ${code('/settings language ar')} للعربية\n` +
+          `• ${code('/settings language en')} للإنجليزية`,
           { parse_mode: 'MarkdownV2' }
         );
         return;
@@ -89,14 +93,15 @@ export async function handleSettings(ctx) {
       if (success) {
         const languageName = settingValue === 'ar' ? '🇸🇦 العربية' : '🇺🇸 English';
         await ctx.reply(
-          `✅ *${escapeMarkdownV2('تم تحديث إعداداتك بنجاح')}*\n` +
+          `✅ ${bold('تم تحديث إعداداتك بنجاح')}\n\n` +
           `🌐 تم تغيير اللغة إلى: ${languageName}\n\n` +
-          `💡 ملاحظة: هذه الميزة قيد التطوير وستؤثر على الرسائل المستقبلية`,
+          `💡 ${italic('ملاحظة: هذه الميزة قيد التطوير وستؤثر على الرسائل المستقبلية')}\n\n` +
+          `📝 يمكنك عرض إعداداتك باستخدام ${code('/settings')}`,
           { parse_mode: 'MarkdownV2' }
         );
       } else {
         await ctx.reply(
-          `❌ *${escapeMarkdownV2('حدث خطأ أثناء تحديث الإعدادات')}*\n` +
+          `❌ ${bold('حدث خطأ أثناء تحديث الإعدادات')}\n\n` +
           `يرجى المحاولة لاحقًا أو التواصل مع الدعم: ${escapeMarkdownV2(config.admin.supportChannel)}`,
           { parse_mode: 'MarkdownV2' }
         );
@@ -107,18 +112,22 @@ export async function handleSettings(ctx) {
 
     // إعداد غير معروف
     await ctx.reply(
-      `❌ *${escapeMarkdownV2('نوع الإعداد غير معروف')}*\n\n` +
-      `📝 الإعدادات المدعومة:\n• \`reminders\`\n• \`language\`\n` +
-      `💡 أمثلة:\n` +
-      `• \`/settings reminders on/off\`\n` +
-      `• \`/settings language ar/en\``,
+      `❌ ${bold('نوع الإعداد غير معروف')}\n\n` +
+      `📝 ${bold('الإعدادات المدعومة:')}\n` +
+      `• ${code('reminders')} \\- تفعيل/إيقاف التذكيرات\n` +
+      `• ${code('language')} \\- تغيير اللغة\n\n` +
+      `💡 ${bold('أمثلة:')}\n` +
+      `• ${code('/settings reminders on/off')}\n` +
+      `• ${code('/settings language ar/en')}\n\n` +
+      `📞 للمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}`,
       { parse_mode: 'MarkdownV2' }
     );
 
   } catch (error) {
     console.error('❌ خطأ في أمر /settings:', error);
     await ctx.reply(
-      `❌ ${escapeMarkdownV2('حدث خطأ، يرجى المحاولة لاحقًا أو التواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
+      `❌ ${bold('حدث خطأ')}\n\n` +
+      `يرجى المحاولة لاحقًا أو التواصل مع ${escapeMarkdownV2(config.admin.supportChannel)}`,
       { parse_mode: 'MarkdownV2' }
     );
   }

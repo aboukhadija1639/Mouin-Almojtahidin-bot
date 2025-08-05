@@ -1,79 +1,57 @@
 // bot/commands/deletereminder.js
-import { deleteReminder, getUserReminders } from '../utils/database.js';
-import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
+import { deleteReminder } from '../utils/database.js';
+import { escapeMarkdownV2, bold, italic, code } from '../utils/escapeMarkdownV2.js';
 import { config } from '../../config.js';
 
-export async function handleDeleteReminder(ctx) {
+export async function handleDeletereminder(ctx) {
   try {
     const userId = ctx.from.id;
     const messageText = ctx.message.text;
-    
-    // Parse command arguments
     const args = messageText.split(' ');
+
     if (args.length < 2) {
       await ctx.reply(
-        escapeMarkdownV2(
-          `🗑️ *كيفية حذف تذكير*\n\n` +
-          `الصيغة الصحيحة: \`/deletereminder رقم_ID\`\n` +
-          `مثال: \`/deletereminder 123\`\n\n` +
-          `💡 لمعرفة أرقام تذكيراتك، استخدم: \`/listreminders\``
-        ),
+        `🗑️ ${bold('حذف تذكير')}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `📝 ${bold('الاستخدام الصحيح:')}\n` +
+        `${code('/deletereminder رقم_ID')}\n\n` +
+        `💡 ${bold('للحصول على رقم ID:')}\n` +
+        `استخدم ${code('/listreminders')} لعرض جميع تذكيراتك مع أرقام ID\n\n` +
+        `📞 للمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}`,
         { parse_mode: 'MarkdownV2' }
       );
       return;
     }
 
     const reminderId = parseInt(args[1]);
-
-    // Validate reminder ID
+    
     if (isNaN(reminderId) || reminderId <= 0) {
       await ctx.reply(
-        escapeMarkdownV2(
-          `❌ *رقم التذكير غير صحيح*\n\n` +
-          `يرجى إدخال رقم صحيح للتذكير.\n` +
-          `استخدم \`/listreminders\` لمعرفة أرقام تذكيراتك.`
-        ),
+        `❌ ${bold('رقم ID غير صحيح')}\n\n` +
+        `يجب أن يكون رقم ID عدداً صحيحاً موجباً\\.\n\n` +
+        `💡 استخدم ${code('/listreminders')} لعرض الأرقام الصحيحة\\.`,
         { parse_mode: 'MarkdownV2' }
       );
       return;
     }
 
-    // Check if reminder exists and belongs to user
-    const userReminders = await getUserReminders(userId);
-    const reminderExists = userReminders.find(r => r.reminder_id === reminderId);
-    
-    if (!reminderExists) {
-      await ctx.reply(
-        escapeMarkdownV2(
-          `❌ *التذكير غير موجود*\n\n` +
-          `لم يتم العثور على تذكير برقم ${reminderId} في قائمتك.\n` +
-          `استخدم \`/listreminders\` لمعرفة تذكيراتك النشطة.`
-        ),
-        { parse_mode: 'MarkdownV2' }
-      );
-      return;
-    }
+    // Attempt to delete the reminder
+    const result = await deleteReminder(userId, reminderId);
 
-    // Delete the reminder
-    const deleteSuccess = await deleteReminder(userId, reminderId);
-    
-    if (deleteSuccess) {
+    if (result && result.changes > 0) {
       await ctx.reply(
-        escapeMarkdownV2(
-          `✅ *تم حذف التذكير بنجاح*\n\n` +
-          `🆔 *رقم التذكير المحذوف:* ${reminderId}\n` +
-          `📝 *الرسالة:* ${reminderExists.message}\n\n` +
-          `💡 يمكنك إضافة تذكيرات جديدة باستخدام \`/addreminder\``
-        ),
+        `✅ ${bold('تم حذف التذكير بنجاح')}\n\n` +
+        `🗑️ تم حذف التذكير رقم ${code(reminderId.toString())}\n\n` +
+        `📋 لعرض التذكيرات المتبقية، استخدم ${code('/listreminders')}\n\n` +
+        `➕ لإضافة تذكير جديد، استخدم ${code('/addreminder')}`,
         { parse_mode: 'MarkdownV2' }
       );
     } else {
       await ctx.reply(
-        escapeMarkdownV2(
-          `❌ *فشل في حذف التذكير*\n\n` +
-          `حدث خطأ تقني، حاول مرة أخرى.\n` +
-          `إذا استمرت المشكلة، تواصل مع ${config.admin.supportChannel}`
-        ),
+        `❌ ${bold('لم يتم العثور على التذكير')}\n\n` +
+        `لا يوجد تذكير برقم ${code(reminderId.toString())} أو أنه لا يخصك\\.\n\n` +
+        `📋 للتحقق من تذكيراتك، استخدم ${code('/listreminders')}\n\n` +
+        `📞 للمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}`,
         { parse_mode: 'MarkdownV2' }
       );
     }
@@ -81,7 +59,8 @@ export async function handleDeleteReminder(ctx) {
   } catch (error) {
     console.error('خطأ في أمر /deletereminder:', error);
     await ctx.reply(
-      escapeMarkdownV2(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`),
+      `❌ ${bold('حدث خطأ أثناء حذف التذكير')}\n\n` +
+      `حاول مرة أخرى أو تواصل مع ${escapeMarkdownV2(config.admin.supportChannel)}`,
       { parse_mode: 'MarkdownV2' }
     );
   }

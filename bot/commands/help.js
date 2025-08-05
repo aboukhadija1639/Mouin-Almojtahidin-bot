@@ -1,92 +1,90 @@
 // bot/commands/help.js
-import { isUserVerified, isUserAdmin } from '../utils/database.js';
+import { isUserVerified } from '../utils/database.js';
 import { config } from '../../config.js';
-import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
+import { escapeMarkdownV2, bold, italic, code } from '../utils/escapeMarkdownV2.js';
 
 export async function handleHelp(ctx) {
   try {
-    console.log('Processing /help command for user:', ctx.from.id);
     const userId = ctx.from.id;
-    const verified = await isUserVerified(userId);
-    console.log('User verification status:', verified);
-    const isAdmin = await isUserAdmin(userId);
-    console.log('User admin status:', isAdmin);
+    const userData = await isUserVerified(userId);
+    const isVerified = userData?.verified || false;
+    const isAdmin = config.admin.userIds.includes(userId);
 
-    let message = escapeMarkdownV2(
-      `🆘 *دليل استخدام بوت معين المجتهدين*\n\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n\n` +
-      `📚 *مرحبًا بك في بوت إدارة الدورات!*\n\n` +
-      `🌐 *أوامر عامة (متاحة للجميع):*\n` +
-      `• 🏠 /start \\- بدء الاستخدام وتسجيل الحساب\n` +
-      `• 🔑 /verify كود_التفعيل \\- تفعيل الحساب (مثال: /verify free_palestine1447)\n` +
-      `• ℹ️ /help \\- عرض هذا الدليل\n` +
-      `• ❓ /faq \\- الأسئلة الشائعة\n\n`
-    );
+    let message = `🆘 ${bold('مساعدة بوت معين المجتهدين')}\n\n`;
+    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-    if (verified?.verified) {
-      message += escapeMarkdownV2(
-        `👤 *أوامر المستخدم المفعل:*\n` +
-        `• 📋 /profile \\- عرض ملفك الشخصي\n` +
-        `• 📅 /attendance رقم_الدرس \\- تسجيل الحضور (مثال: /attendance 1)\n` +
-        `• 📝 /submit رقم_الواجب الإجابة \\- إرسال إجابة (مثال: /submit 1 إجابتي)\n` +
-        `• 📚 /courses \\- قائمة الدروس\n` +
-        `• 📋 /assignments \\- قائمة الواجبات\n` +
-        `• 🔔 /reminders \\- تفعيل/إيقاف التذكيرات\n` +
-        `• ⏰ /addreminder التاريخ_الوقت الرسالة \\- إضافة تذكير مخصص\n` +
-        `• 📋 /listreminders \\- عرض التذكيرات النشطة\n` +
-        `• 🗑️ /deletereminder رقم_ID \\- حذف تذكير محدد\n` +
-        `• 📅 /upcominglessons \\- الدروس القادمة (7 أيام)\n` +
-        `• 💬 /feedback رسالتك \\- إرسال تغذية راجعة\n` +
-        `• 🐛 /reportbug وصف_المشكلة \\- الإبلاغ عن خطأ\n` +
-        `• ⚙️ /settings \\- إعدادات المستخدم\n`
-      );
-    } else {
-      message += escapeMarkdownV2(
-        `🔒 *يجب التفعيل أولاً (استخدم /verify)*\n\n`
-      );
+    // Basic commands for all users
+    message += `📋 ${bold('الأوامر الأساسية:')}\n\n`;
+    message += `• ${code('/start')} \\- بدء استخدام البوت\n`;
+    message += `• ${code('/help')} \\- عرض هذه المساعدة\n`;
+    message += `• ${code('/faq')} \\- الأسئلة الشائعة\n`;
+    message += `• ${code('/profile')} \\- عرض ملفك الشخصي\n`;
+    
+    if (!isVerified) {
+      message += `• ${code('/verify <كود>')} \\- تفعيل حسابك\n`;
+    }
+    
+    message += `\n`;
+
+    // Commands for verified users
+    if (isVerified) {
+      message += `✅ ${bold('أوامر المستخدمين المفعلين:')}\n\n`;
+      message += `• ${code('/courses')} \\- عرض الدورات المتاحة\n`;
+      message += `• ${code('/assignments')} \\- عرض الواجبات\n`;
+      message += `• ${code('/submit')} \\- إرسال إجابة واجب\n`;
+      message += `• ${code('/attendance')} \\- تسجيل الحضور\n`;
+      message += `• ${code('/stats')} \\- إحصائياتك الشخصية\n`;
+      message += `• ${code('/settings')} \\- إعدادات الحساب\n\n`;
+
+      message += `⏰ ${bold('أوامر التذكيرات:')}\n\n`;
+      message += `• ${code('/addreminder')} \\- إضافة تذكير شخصي\n`;
+      message += `• ${code('/listreminders')} \\- عرض تذكيراتك\n`;
+      message += `• ${code('/deletereminder')} \\- حذف تذكير\n`;
+      message += `• ${code('/upcominglessons')} \\- الدروس القادمة\n\n`;
     }
 
+    // Admin commands
     if (isAdmin) {
-      message += escapeMarkdownV2(
-        `⚙️ *أوامر المدير:*\n` +
-        `• 📊 /stats \\- عرض إحصائيات البوت\n` +
-        `• 📢 /publish نص_الإعلان \\- نشر إعلان (مثال: /publish الدرس القادم غدًا)\n` +
-        `• 📊 /export نوع_البيانات \\- تصدير البيانات (attendance/assignments)\n` +
-        `• 📬 /viewfeedback \\- عرض التغذية الراجعة\n` +
-        `• 📢 /broadcast <group|users> <message> \\- إرسال رسالة جماعية\n` +
-        `• 🗑️ /deletecourse رقم_الكورس \\- حذف الكورس\n` +
-        `• 📝 إدارة الواجبات: /addassignment, /updateassignment, /deleteassignment\n` +
-        `• 📚 إدارة الكورسات: /addcourse, /updatecourse, /deletecourse\n\n`
-      );
+      message += `👑 ${bold('أوامر الإدارة:')}\n\n`;
+      message += `• ${code('/broadcast')} \\- إرسال رسالة جماعية\n`;
+      message += `• ${code('/courseadmin')} \\- إدارة الدورات\n`;
+      message += `• ${code('/export')} \\- تصدير البيانات\n`;
+      message += `• ${code('/publish')} \\- نشر إعلان\n\n`;
     }
 
-    message += escapeMarkdownV2(
-      `━━━━━━━━━━━━━━━━━━━━\n\n` +
-      `💡 *نصائح:*\n` +
-      `• احفظ كود التفعيل بأمان\n` +
-      `• تابع مواعيد الدروس والواجبات\n` +
-      `• تواصل مع ${config.admin.supportChannel} للدعم\n\n` +
-      `🤖 *بوت معين المجتهدين \\- v2\\.0\\.0*\n` +
-      `📅 *آخر تحديث:* ${new Date().toLocaleDateString('ar-SA')}`
-    );
+    // Support and feedback
+    message += `🛠️ ${bold('الدعم والتطوير:')}\n\n`;
+    message += `• ${code('/reportbug')} \\- الإبلاغ عن مشكلة\n`;
+    message += `• ${code('/feedback')} \\- إرسال اقتراح أو رأي\n\n`;
 
-    console.log('Sending /help response:', message);
+    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    
+    if (!isVerified) {
+      message += `🔒 ${bold('تنبيه:')}\n`;
+      message += `بعض الأوامر تتطلب تفعيل الحساب أولاً\\.\n`;
+      message += `استخدم ${code('/verify <كود>')} للتفعيل\\.\n\n`;
+    }
+
+    message += `💡 ${bold('نصائح مهمة:')}\n`;
+    message += `• استخدم الأوامر بالصيغة الصحيحة\n`;
+    message += `• تأكد من تفعيل التذكيرات في الإعدادات\n`;
+    message += `• راجع الأسئلة الشائعة للمساعدة السريعة\n\n`;
+
+    message += `📞 ${bold('تحتاج مساعدة إضافية؟')}\n`;
+    message += `تواصل معنا: ${escapeMarkdownV2(config.admin.supportChannel)}\n\n`;
+    
+    message += `🤖 ${italic('بوت معين المجتهدين \\- نسخة 2\\.0')}`;
+
     await ctx.reply(message, {
       parse_mode: 'MarkdownV2',
-      disable_web_page_preview: true,
+      disable_web_page_preview: true
     });
+
   } catch (error) {
-    console.error('Error in /help command:', error);
-    try {
-      const fs = await import('fs');
-      fs.appendFileSync('./data/error.log', `[HELP] ${new Date().toISOString()}\n${error.stack || error}\n`);
-    } catch (e) {
-      console.error('Error logging to file:', e);
-    }
+    console.error('خطأ في أمر /help:', error);
     await ctx.reply(
-      escapeMarkdownV2(
-        `❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`
-      ),
+      `❌ ${bold('حدث خطأ أثناء عرض المساعدة')}\n\n` +
+      `حاول مرة أخرى أو تواصل مع ${escapeMarkdownV2(config.admin.supportChannel)}`,
       { parse_mode: 'MarkdownV2' }
     );
   }
