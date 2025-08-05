@@ -1,4 +1,4 @@
-import { updateUserSettings, getUserSettings } from '../utils/database.js';
+import { updateUserSettings, getUserSettings, updateUserLanguage } from '../utils/database.js';
 import { config } from '../../config.js';
 import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
 
@@ -22,13 +22,15 @@ export async function handleSettings(ctx) {
       }
 
       const remindersStatus = settings.reminders_enabled ? '✅ مفعلة' : '❌ معطلة';
+      const languageStatus = settings.language === 'ar' ? '🇸🇦 العربية' : '🇺🇸 English';
 
       await ctx.reply(
         `⚙️ *${escapeMarkdownV2('إعداداتك')}*\n` +
-        `🔔 *التذكيرات:* ${remindersStatus}\n\n` +
-        `🛠️ لتغيير التذكيرات:\n` +
-        `• \`/settings reminders on\` لتفعيل التذكيرات\n` +
-        `• \`/settings reminders off\` لإيقاف التذكيرات\n\n` +
+        `🔔 *التذكيرات:* ${remindersStatus}\n` +
+        `🌐 *اللغة:* ${languageStatus}\n\n` +
+        `🛠️ *لتغيير الإعدادات:*\n` +
+        `• \`/settings reminders on/off\` للتذكيرات\n` +
+        `• \`/settings language ar/en\` للغة\n\n` +
         `💡 يمكنك إضافة تذكيرات خاصة باستخدام \`/addreminder\``,
         { parse_mode: 'MarkdownV2' }
       );
@@ -70,13 +72,46 @@ export async function handleSettings(ctx) {
       return;
     }
 
+    if (settingType === 'language') {
+      if (!['ar', 'en'].includes(settingValue)) {
+        await ctx.reply(
+          `❌ *قيمة غير صحيحة*\n` +
+          `📝 استخدم:\n` +
+          `• \`/settings language ar\` للعربية\n` +
+          `• \`/settings language en\` للإنجليزية`,
+          { parse_mode: 'MarkdownV2' }
+        );
+        return;
+      }
+
+      const success = await updateUserLanguage(userId, settingValue);
+
+      if (success) {
+        const languageName = settingValue === 'ar' ? '🇸🇦 العربية' : '🇺🇸 English';
+        await ctx.reply(
+          `✅ *${escapeMarkdownV2('تم تحديث إعداداتك بنجاح')}*\n` +
+          `🌐 تم تغيير اللغة إلى: ${languageName}\n\n` +
+          `💡 ملاحظة: هذه الميزة قيد التطوير وستؤثر على الرسائل المستقبلية`,
+          { parse_mode: 'MarkdownV2' }
+        );
+      } else {
+        await ctx.reply(
+          `❌ *${escapeMarkdownV2('حدث خطأ أثناء تحديث الإعدادات')}*\n` +
+          `يرجى المحاولة لاحقًا أو التواصل مع الدعم: ${escapeMarkdownV2(config.admin.supportChannel)}`,
+          { parse_mode: 'MarkdownV2' }
+        );
+      }
+
+      return;
+    }
+
     // إعداد غير معروف
     await ctx.reply(
       `❌ *${escapeMarkdownV2('نوع الإعداد غير معروف')}*\n\n` +
-      `📝 الإعدادات المدعومة:\n• \`reminders\`\n` +
+      `📝 الإعدادات المدعومة:\n• \`reminders\`\n• \`language\`\n` +
       `💡 أمثلة:\n` +
-      `• \`/settings reminders on\`\n` +
-      `• \`/settings reminders off\``,
+      `• \`/settings reminders on/off\`\n` +
+      `• \`/settings language ar/en\``,
       { parse_mode: 'MarkdownV2' }
     );
 

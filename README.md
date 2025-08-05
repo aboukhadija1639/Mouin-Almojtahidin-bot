@@ -1,361 +1,311 @@
-# بوت معين المجتهدين | Mouin-Almojtahidin Bot
+# 🤖 Mouin Almojtahidin Bot
 
-## 📋 نظرة عامة
+A comprehensive Telegram bot for educational course management, built with **Telegraf**, **SQLite**, and **Node.js**. The bot focuses on robust reminder functionality with admin-controlled features for managing courses, assignments, and user interactions.
 
-بوت معين المجتهدين هو بوت تلغرام مصمم لإدارة مجموعات الكورسات التعليمية بطريقة احترافية وسهلة. يوفر البوت مجموعة شاملة من الميزات لتنظيم الدروس، تتبع الحضور، إدارة الواجبات، والتذكيرات الآلية.
+## ✨ Features
 
-## ✨ الميزات الرئيسية
+### 🎯 Core Functionality
+- **Reminder System**: Advanced reminder management with group and DM notifications
+- **User Management**: Verification system with admin-controlled access
+- **Course Management**: Complete course and lesson administration
+- **Assignment System**: Create, manage, and track assignments with automatic grading
+- **Attendance Tracking**: Monitor student participation in lessons
 
-### 🆘 دليل المساعدة الشامل
-- **جديد**: أمر `/help` يوفر دليلاً تفاعلياً شاملاً
-- عرض مخصص للأوامر حسب مستوى المستخدم (عام، مستخدم مفعل، مدير)
-- نصائح وروابط مفيدة لاستخدام البوت
+### 📱 User Commands
+- `/start` - Welcome message with interactive buttons
+- `/verify <code>` - Account verification with admin-provided codes
+- `/help` - Comprehensive command guide
+- `/faq` - Frequently asked questions
+- `/profile` - View personal profile and statistics
+- `/courses` - List available courses and lessons
+- `/assignments` - View active assignments
+- `/attendance <lesson_id>` - Mark attendance for lessons
+- `/submit <assignment_id> <answer>` - Submit assignment answers
+- `/reminders` - Toggle reminder notifications
+- `/addreminder <datetime> <message>` - Create custom reminders
+- `/listreminders` - View active personal reminders
+- `/deletereminder <id>` - Delete specific reminders
+- `/upcominglessons` - Show lessons scheduled for next 7 days
+- `/feedback <message>` - Send feedback to administrators
+- `/reportbug <description>` - Report technical issues
+- `/settings` - Manage user preferences (language, notifications)
 
-### 📚 عرض الدروس والجدولة
-- **جديد**: أمر `/courses` لعرض جميع الدروس المجدولة
-- تصنيف الدروس إلى قادمة وسابقة
-- عرض التواريخ والأوقات بتنسيق واضح
-- روابط مباشرة للدروس
+### 👨‍💼 Admin Commands
+- `/stats` - View bot statistics and analytics
+- `/publish <message>` - Send announcements to all verified users
+- `/broadcast <group|users> <message>` - Mass messaging system
+- `/addassignment <course_id> <title> <question> <answer> <deadline>` - Create assignments
+- `/updateassignment <id> <field> <value>` - Modify existing assignments
+- `/deleteassignment <id>` - Remove assignments (with dependency handling)
+- `/deletecourse <id>` - Remove courses
+- `/export <type>` - Export data (attendance/assignments)
+- `/viewfeedback` - Review user feedback
 
-### 📝 إدارة الواجبات المحسنة
-- **جديد**: أمر `/assignments` لعرض جميع الواجبات
-- تصنيف الواجبات إلى نشطة ومنتهية الصلاحية
-- عرض المواعيد النهائية والوقت المتبقي
-- تحسين إدارة الواجبات مع إضافة وتحديث وحذف
+### 🔧 Technical Features
+- **MarkdownV2 Support**: Proper escaping of all reserved characters
+- **Database Integrity**: Foreign key constraints with CASCADE handling
+- **Robust Launch**: Exponential backoff retry with webhook fallback
+- **Input Validation**: Comprehensive security measures
+- **Rate Limiting**: Built-in protection against spam
+- **Localization**: Arabic/English language support
+- **Error Reporting**: Comprehensive logging and bug tracking
 
-### 🔔 التذكيرات القابلة للتخصيص
-- **جديد**: أمر `/reminders` للتحكم في التذكيرات
-- إمكانية تفعيل/إيقاف التذكيرات لكل مستخدم
-- تذكيرات آلية قبل 24 ساعة وساعة واحدة من الدروس
-- إشعارات محسنة مع تنسيق MarkdownV2
+## 🚀 Installation & Setup
 
-### 🔒 حماية متقدمة ومعالجة الأخطاء
-- **جديد**: نظام Rate Limiting لمنع إساءة الاستخدام
-- معالجة محسنة للأخطاء والاستثناءات
-- حماية ضد هجمات الرسائل المكثفة
-- تسجيل مفصل للأنشطة والأخطاء
+### Prerequisites
+- **Node.js**: Version 22.15.0 or higher
+- **npm**: Version 10.0.0 or higher
+- **Telegram Bot Token**: Obtain from [@BotFather](https://t.me/BotFather)
 
-### ❓ خدمة الأسئلة الشائعة
-- عرض الأسئلة الشائعة وإجاباتها
-- سهولة التحديث عبر ملف التكوين
-- تنسيق احترافي وواضح
-
-### 📢 الإعلانات
-- نشر إعلانات للمجموعة والمستخدمين
-- حفظ الإعلانات في قاعدة البيانات
-- تتبع حالة الإرسال
-
-### 📊 تتبع الحضور
-- تسجيل حضور الطلاب للدروس
-- إحصائيات مفصلة للحضور
-- تقارير للمدراء
-
-### 📈 إحصائيات شاملة ومحسنة
-- **محسن**: إحصائيات محمية من أخطاء SQL
-- فحص وجود الجداول قبل الاستعلام
-- عدد المستخدمين الكلي والمفعلين
-- معدلات الحضور لكل درس
-- معدلات تسليم الواجبات
-
-### 👤 ملفات المستخدمين
-- عرض معلومات المستخدم الشخصية
-- إحصائيات الحضور والواجبات
-- حالة التفعيل والتذكيرات
-
-### 🔐 نظام التحقق المحسن
-- تفعيل المستخدمين بكود الأمان
-- **محسن**: فحص أفضل لمتغيرات البيئة
-- حماية البوت من الاستخدام غير المصرح
-- تحقق من الصلاحيات
-
-## 🛠️ التقنيات المستخدمة
-
-- **Node.js** v22.15.0 مع ES Modules
-- **Telegraf** v4.15.6 للتكامل مع تلغرام
-- **SQLite** v5.1.6 لتخزين البيانات
-- **node-schedule** v2.1.1 للتذكيرات الآلية
-- **dotenv** v16.3.1 لمتغيرات البيئة
-
-## 🔧 التحسينات والإصلاحات الحديثة
-
-### 🆕 الميزات الجديدة (النسخة 1.0.0)
-- ✅ أمر `/help` شامل ومفصل
-- ✅ أمر `/courses` لعرض الدروس
-- ✅ أمر `/assignments` لعرض الواجبات  
-- ✅ أمر `/reminders` للتحكم في التذكيرات
-- ✅ نظام Rate Limiting للحماية من إساءة الاستخدام
-- ✅ تحسين معالجة الأخطاء والاستثناءات
-
-### 🐛 الإصلاحات المهمة
-- ✅ **إصلاح خطأ ENOENT**: حل مشكلة "no such file or directory" عند إنشاء ملفات السجل
-- ✅ **إصلاح أخطاء Markdown**: حل مشاكل تحليل الرموز الخاصة والانتقال إلى MarkdownV2
-- ✅ **إصلاح خطأ SQL**: حل مشكلة "near 'as': syntax error" في دالة getStats
-- ✅ **تحسين الأمان**: فحص وجود الجداول قبل الاستعلام لتجنب الأخطاء
-- ✅ **تحسين متغيرات البيئة**: فحص أفضل وتحقق من المتغيرات المطلوبة
-
-### 🔒 تحسينات الأمان
-- **Rate Limiting**: حماية من هجمات الطلبات المكثفة
-- **Input Validation**: فحص أفضل للمدخلات
-- **Error Handling**: معالجة آمنة للأخطاء دون كشف معلومات حساسة
-- **Environment Variables**: فحص وجود المتغيرات المطلوبة عند بدء التشغيل
-
-## 📦 التثبيت والإعداد
-
-### 1. متطلبات النظام
+### 1. Clone Repository
 ```bash
-node >= 22.15.0
-npm >= 10.0.0
+git clone <repository-url>
+cd mouin-almojtahidin-bot
 ```
 
-### 2. استنساخ المشروع
-```bash
-git clone https://github.com/your-username/Mouin-Almojtahidin-bot.git
-cd Mouin-Almojtahidin-bot
-```
-
-### 3. تثبيت التبعيات
+### 2. Install Dependencies
 ```bash
 npm install
 ```
 
-### 4. إعداد متغيرات البيئة
-انسخ ملف `.env.example` إلى `.env` وقم بتعديل القيم:
+### 3. Environment Configuration
+Create a `.env` file in the project root:
 
-```bash
-cp .env.example .env
-```
-
-قم بتعديل الملف `.env`:
 ```env
-# Telegram Bot Configuration
-BOT_TOKEN=your_actual_bot_token_from_botfather
+# Bot Configuration
+BOT_TOKEN=your_telegram_bot_token_here
 
 # Admin Configuration
-ADMIN_USER_IDS=123456789,987654321
-GROUP_ID=-100123456789
-SUPPORT_CHANNEL=@YourSupportChannel
-ADMIN_CHAT_ID=-100123456789
+ADMIN_USER_IDS=123456789,987654321  # Comma-separated admin user IDs
+ADMIN_CHAT_ID=-1001234567890        # Main group chat ID (optional)
 
-# User Verification
-ACTIVATION_CODE=YOUR_SECRET_CODE
+# Verification
+VERIFICATION_CODE=your_verification_code_here
 
-# Zoom Configuration
-ZOOM_LINK=https://zoom.us/j/your_meeting_id?pwd=your_password
+# Support
+SUPPORT_CHANNEL=@your_support_channel
+
+# Webhook (optional - for production)
+WEBHOOK_URL=https://your-domain.com/bot
+PORT=3000
+
+# Database
+DATABASE_PATH=./data/mouin_almojtahidin.db
 ```
 
-### 5. تشغيل البوت
+### 4. Database Setup
+The bot automatically creates the SQLite database and tables on first run:
+
 ```bash
-npm start
+npm run start
 ```
 
-للتطوير مع إعادة التشغيل الآلي:
+### 5. Development
+For development with auto-restart:
+
 ```bash
 npm run dev
 ```
 
-## 📊 بنية قاعدة البيانات
+## 🔧 Configuration
 
-### جدول المستخدمين (users)
-| العمود | النوع | الوصف |
-|---------|--------|--------|
-| user_id | INTEGER PRIMARY KEY | معرف المستخدم |
-| username | TEXT | اسم المستخدم |
-| first_name | TEXT | الاسم الأول |
-| join_date | DATETIME | تاريخ الانضمام |
-| is_verified | BOOLEAN | حالة التفعيل |
-| reminders_enabled | BOOLEAN | تفعيل التذكيرات |
+### Admin Setup
+1. Get your Telegram user ID by messaging [@userinfobot](https://t.me/userinfobot)
+2. Add your user ID to `ADMIN_USER_IDS` in the `.env` file
+3. Restart the bot
 
-### جدول الدروس (lessons)
-| العمود | النوع | الوصف |
-|---------|--------|--------|
-| lesson_id | INTEGER AUTO | معرف الدرس |
-| course_id | INTEGER | معرف الكورس |
-| title | TEXT | عنوان الدرس |
-| date | TEXT | التاريخ |
-| time | TEXT | الوقت |
-| zoom_link | TEXT | رابط الزوم |
+### Group Integration
+1. Add the bot to your main group
+2. Make the bot an administrator
+3. Get the group chat ID using `/getChatId` command
+4. Add the chat ID to `ADMIN_CHAT_ID` in the `.env` file
 
-### جدول الحضور (attendance)
-| العمود | النوع | الوصف |
-|---------|--------|--------|
-| user_id | INTEGER | معرف المستخدم |
-| lesson_id | INTEGER | معرف الدرس |
-| attended_at | DATETIME | وقت تسجيل الحضور |
+### Verification System
+1. Set a secure verification code in `VERIFICATION_CODE`
+2. Share this code with students for account activation
+3. Only verified users can access most bot features
 
-### جدول الإعلانات (announcements)
-| العمود | النوع | الوصف |
-|---------|--------|--------|
-| announcement_id | INTEGER AUTO | معرف الإعلان |
-| content | TEXT | محتوى الإعلان |
-| published_at | DATETIME | وقت النشر |
-| sent_to_group | BOOLEAN | تم الإرسال للمجموعة |
+## 📚 Database Schema
 
-### جدول الواجبات (assignments)
-| العمود | النوع | الوصف |
-|---------|--------|--------|
-| assignment_id | INTEGER AUTO | معرف الواجب |
-| course_id | INTEGER | معرف الكورس |
-| title | TEXT | عنوان الواجب |
-| question | TEXT | السؤال |
-| correct_answer | TEXT | الإجابة الصحيحة |
-| deadline | TEXT | الموعد النهائي |
+### Tables
+- **users**: User profiles and preferences
+- **courses**: Course information
+- **lessons**: Individual lesson details
+- **assignments**: Assignment data with deadlines
+- **submissions**: Student assignment submissions
+- **attendance**: Lesson attendance records
+- **custom_reminders**: User-created reminders
+- **feedback**: User feedback and admin responses
+- **bugs**: Bug reports and resolution tracking
+- **announcements**: Published announcements
 
-### جدول التسليمات (submissions)
-| العمود | النوع | الوصف |
-|---------|--------|--------|
-| user_id | INTEGER | معرف المستخدم |
-| assignment_id | INTEGER | معرف الواجب |
-| answer | TEXT | الإجابة |
-| submitted_at | DATETIME | وقت التسليم |
-| score | INTEGER | النقاط |
+### Key Features
+- Foreign key constraints with CASCADE delete
+- Automatic timestamp tracking
+- User language preferences
+- Reminder status tracking
 
-## 🎯 الأوامر المتاحة
+## 🚀 Deployment
 
-### الأوامر العامة (متاحة للجميع)
-- `/start` - بدء استخدام البوت وتسجيل الحساب
-- `/verify <كود>` - تفعيل الحساب بكود التفعيل
-- `/help` - **جديد**: دليل شامل لجميع الأوامر والميزات
-
-### أوامر المستخدمين المفعلين
-- `/profile` - عرض الملف الشخصي والإحصائيات
-- `/courses` - **جديد**: عرض جميع الدروس المجدولة والقادمة
-- `/assignments` - **جديد**: عرض جميع الواجبات النشطة والمنتهية
-- `/attendance <رقم_الدرس>` - تسجيل الحضور في درس معين
-- `/reminders` - **جديد**: تفعيل/إيقاف التذكيرات الشخصية
-- `/submit <رقم_الواجب> <الإجابة>` - تقديم إجابة واجب
-- `/faq` - عرض الأسئلة الشائعة وإجاباتها
-
-### أوامر المدراء
-- `/stats` - عرض إحصائيات شاملة للبوت والمستخدمين
-- `/publish <الرسالة>` - نشر إعلان لجميع المستخدمين
-- `/addassignment <معرف_الكورس> <العنوان> <السؤال> <الإجابة> <الموعد>` - إضافة واجب جديد
-- `/updateassignment <معرف_الواجب> <الحقل> <القيمة>` - تحديث واجب موجود
-- `/deleteassignment <معرف_الواجب>` - حذف واجب نهائياً
-
-## 📝 بيانات تجريبية للاختبار
-
-### إضافة دروس تجريبية
-```sql
-INSERT INTO lessons (course_id, title, date, time, zoom_link) VALUES 
-(1, 'مقدمة في البرمجة', '2024-01-15', '19:00', 'https://zoom.us/j/example'),
-(1, 'أساسيات الخوارزميات', '2024-01-17', '19:00', 'https://zoom.us/j/example'),
-(1, 'هياكل البيانات', '2024-01-20', '19:00', 'https://zoom.us/j/example');
-```
-
-### إضافة واجب تجريبي
-```sql
-INSERT INTO assignments (course_id, title, question, correct_answer, deadline) VALUES 
-(1, 'واجب الوحدة الأولى', 'ما هو تعريف البرمجة؟', 'البرمجة هي عملية كتابة التعليمات للحاسوب', '2024-01-25');
-```
-
-### تفعيل مستخدم تجريبي
-```sql
-INSERT INTO users (user_id, username, first_name, is_verified) VALUES 
-(123456789, 'testuser', 'مستخدم تجريبي', 1);
-```
-
-## 🔧 هيكل الملفات
-
-```
-Mouin-Almojtahidin-bot/
-├── bot/
-│   ├── commands/          # معالجات الأوامر
-│   │   ├── start.js       # أمر /start
-│   │   ├── verify.js      # أمر /verify
-│   │   ├── help.js        # أمر /help (جديد)
-│   │   ├── faq.js         # أمر /faq
-│   │   ├── profile.js     # أمر /profile
-│   │   ├── courses.js     # أمر /courses (جديد)
-│   │   ├── assignments.js # أمر /assignments (جديد)
-│   │   ├── attendance.js  # أمر /attendance
-│   │   ├── reminders.js   # أمر /reminders (جديد)
-│   │   ├── stats.js       # أمر /stats (مدراء)
-│   │   ├── publish.js     # أمر /publish (مدراء)
-│   │   └── assignment.js  # أوامر إدارة الواجبات
-│   ├── utils/
-│   │   ├── database.js    # إعداد قاعدة البيانات (محسن)
-│   │   └── reminders.js   # نظام التذكيرات (محسن)
-│   └── middlewares/
-│       ├── logger.js      # تسجيل الأنشطة
-│       ├── rateLimiter.js # حد معدل الطلبات (جديد)
-│       └── verifyMiddleware.js # التحقق من التفعيل
-├── data/
-│   ├── mouin_almojtahidin.db  # قاعدة البيانات
-│   ├── combined.log           # سجل الأنشطة
-│   └── error.log              # سجل الأخطاء
-├── config.js              # ملف التكوين
-├── index.js              # نقطة بداية البوت
-├── .env.example          # مثال متغيرات البيئة
-├── package.json          # معلومات المشروع
-└── README.md            # هذا الملف
-```
-
-## 🚨 استكشاف الأخطاء
-
-### مشاكل شائعة وحلولها
-
-#### البوت لا يستجيب
-- تأكد من صحة `BOT_TOKEN`
-- تحقق من اتصال الإنترنت
-- راجع ملف `data/error.log`
-
-#### مشاكل قاعدة البيانات
-- تأكد من وجود مجلد `data`
-- تحقق من صلاحيات الكتابة
-- راجع رسائل الخطأ في الكونسول
-
-#### التذكيرات لا تعمل
-- تحقق من تنسيق التاريخ والوقت
-- تأكد من أن التاريخ في المستقبل
-- راجع سجل الأنشطة
-
-### سجلات النظام
-- **الأنشطة العامة**: `data/combined.log`
-- **الأخطاء**: `data/error.log`
-- **الكونسول**: عرض مباشر لحالة البوت
-
-## 🔒 الأمان
-
-### نصائح الأمان
-- لا تشارك `BOT_TOKEN` مع أحد
-- استخدم كود تفعيل قوي
-- قم بتحديث معرفات المدراء بانتظام
-- احتفظ بنسخة احتياطية من قاعدة البيانات
-
-### النسخ الاحتياطي
+### Option 1: Traditional Server
 ```bash
-# نسخ احتياطي من قاعدة البيانات
-cp data/mouin_almojtahidin.db backup/db_$(date +%Y%m%d_%H%M%S).db
+# Install PM2 for process management
+npm install -g pm2
 
-# نسخ احتياطي من السجلات
-tar -czf backup/logs_$(date +%Y%m%d_%H%M%S).tar.gz data/*.log
+# Start the bot
+pm2 start index.js --name mouin-bot
+
+# Save PM2 configuration
+pm2 save
+pm2 startup
 ```
 
-## 🤝 المساهمة
+### Option 2: Docker
+```dockerfile
+# Build image
+docker build -t mouin-bot .
 
-نرحب بالمساهمات! لتقديم مساهمة:
+# Run container
+docker run -d --name mouin-bot \
+  --env-file .env \
+  -v $(pwd)/data:/app/data \
+  -p 3000:3000 \
+  mouin-bot
+```
 
-1. Fork المشروع
-2. إنشاء فرع للميزة (`git checkout -b feature/AmazingFeature`)
-3. Commit التغييرات (`git commit -m 'Add some AmazingFeature'`)
-4. Push للفرع (`git push origin feature/AmazingFeature`)
-5. فتح Pull Request
+### Option 3: Heroku
+1. Create a new Heroku app
+2. Set environment variables in Heroku dashboard
+3. Deploy using Git:
+```bash
+git add .
+git commit -m "Deploy to Heroku"
+git push heroku main
+```
 
-## 📄 الترخيص
+### Webhook Mode (Production)
+For production deployment, use webhook mode:
 
-هذا المشروع مرخص تحت رخصة MIT - راجع ملف [LICENSE](LICENSE) للتفاصيل.
+1. Set `WEBHOOK_URL` in environment variables
+2. The bot will automatically fall back to webhook if polling fails
+3. Ensure your server is accessible via HTTPS
 
-## 📞 الدعم
+## 🔒 Security Features
 
-للحصول على الدعم:
-- إنشاء [Issue جديد](https://github.com/your-username/Mouin-Almojtahidin-bot/issues)
-- التواصل عبر قناة الدعم المحددة في التكوين
-- مراجعة الوثائق والأسئلة الشائعة
+### Input Validation
+- All user inputs are sanitized and validated
+- SQL injection prevention
+- Command argument validation
+- Rate limiting protection
 
-## 🎉 شكر خاص
+### Access Control
+- Admin-only commands with verification
+- User verification system
+- Secure database operations with transactions
 
-شكر خاص لجميع المساهمين في تطوير هذا البوت ولمجتمع معين المجتهدين.
+### Error Handling
+- Comprehensive error logging
+- Graceful degradation
+- User-friendly error messages
+
+## 📊 Monitoring & Maintenance
+
+### Logs
+- **Combined logs**: `./data/combined.log`
+- **Error logs**: `./data/error.log`
+- **Database**: `./data/mouin_almojtahidin.db`
+
+### Health Checks
+- `/health` endpoint (webhook mode)
+- Bot status monitoring
+- Database connection verification
+
+### Backup
+Regular database backups recommended:
+```bash
+# Backup database
+cp ./data/mouin_almojtahidin.db ./backups/backup-$(date +%Y%m%d).db
+
+# Backup logs
+tar -czf ./backups/logs-$(date +%Y%m%d).tar.gz ./data/*.log
+```
+
+## 🛠️ Development
+
+### Project Structure
+```
+mouin-almojtahidin-bot/
+├── bot/
+│   ├── commands/          # Command handlers
+│   ├── middlewares/       # Bot middlewares
+│   └── utils/            # Utility functions
+├── data/                 # Database and logs
+├── test/                # Test files
+├── config.js            # Configuration
+├── index.js             # Main bot file
+└── package.json         # Dependencies
+```
+
+### Adding New Commands
+1. Create command handler in `bot/commands/`
+2. Import and register in `index.js`
+3. Add to help command documentation
+4. Update README
+
+### Testing
+```bash
+npm test
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Bot not responding:**
+- Check BOT_TOKEN is correct
+- Verify bot is not blocked
+- Check network connectivity
+
+**Database errors:**
+- Ensure write permissions to `./data/` directory
+- Check disk space
+- Verify SQLite installation
+
+**Webhook issues:**
+- Ensure HTTPS is properly configured
+- Check webhook URL accessibility
+- Verify port configuration
+
+**Path issues with spaces:**
+- Move project to path without spaces
+- Use quotes around paths in scripts
+
+### Getting Help
+- Check logs in `./data/error.log`
+- Use `/reportbug` command for technical issues
+- Contact support channel specified in configuration
+
+## 📄 License
+
+MIT License - see LICENSE file for details.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
+
+## 📞 Support
+
+For support and questions:
+- Use the `/feedback` command in the bot
+- Report bugs with `/reportbug`
+- Contact the support channel configured in your bot
 
 ---
 
-**تم التطوير بـ ❤️ لمجتمع معين المجتهدين**
+**Version**: 2.0.0  
+**Last Updated**: December 2024  
+**Maintained by**: Mouin Almojtahidin Team

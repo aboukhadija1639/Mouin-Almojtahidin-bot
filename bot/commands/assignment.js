@@ -48,6 +48,67 @@ export async function handleAddAssignment(ctx) {
       return;
     }
 
+    // Validate title length
+    if (!title || title.length < 3 || title.length > 100) {
+      await ctx.reply(
+        `❌ *عنوان الواجب غير صحيح*\n` +
+        `يجب أن يكون العنوان بين 3 و 100 حرف.\n` +
+        `العنوان الحالي: ${title?.length || 0} حرف`,
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
+
+    // Validate question length
+    if (!question || question.length < 10 || question.length > 500) {
+      await ctx.reply(
+        `❌ *سؤال الواجب غير صحيح*\n` +
+        `يجب أن يكون السؤال بين 10 و 500 حرف.\n` +
+        `السؤال الحالي: ${question?.length || 0} حرف`,
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
+
+    // Validate correct answer length
+    if (!correctAnswer || correctAnswer.length < 2 || correctAnswer.length > 200) {
+      await ctx.reply(
+        `❌ *الإجابة الصحيحة غير صحيحة*\n` +
+        `يجب أن تكون الإجابة بين 2 و 200 حرف.\n` +
+        `الإجابة الحالية: ${correctAnswer?.length || 0} حرف`,
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
+
+    // Validate deadline format (YYYY-MM-DD)
+    const deadlineRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!deadline || !deadlineRegex.test(deadline)) {
+      await ctx.reply(
+        `❌ *تاريخ الموعد النهائي غير صحيح*\n` +
+        `يجب أن يكون التاريخ بصيغة: YYYY-MM-DD\n` +
+        `مثال: 2024-12-31`,
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
+
+    // Validate that deadline is in the future
+    const deadlineDate = new Date(deadline);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (deadlineDate < today) {
+      await ctx.reply(
+        `❌ *الموعد النهائي في الماضي*\n` +
+        `يجب أن يكون الموعد النهائي في المستقبل.\n` +
+        `التاريخ المحدد: ${deadline}\n` +
+        `التاريخ الحالي: ${today.toISOString().split('T')[0]}`,
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
+
     // Add assignment to database
     const assignmentId = await addAssignment(courseId, title, question, correctAnswer, deadline);
     

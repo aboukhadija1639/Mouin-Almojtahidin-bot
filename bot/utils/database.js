@@ -82,7 +82,8 @@ async function createTables() {
         first_name TEXT,
         join_date DATETIME DEFAULT CURRENT_TIMESTAMP,
         is_verified BOOLEAN DEFAULT 0,
-        reminders_enabled BOOLEAN DEFAULT 1
+        reminders_enabled BOOLEAN DEFAULT 1,
+        language TEXT DEFAULT 'ar'
       )
     `);
 
@@ -166,6 +167,21 @@ async function createTables() {
         user_id INTEGER NOT NULL,
         message TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        is_read BOOLEAN DEFAULT 0,
+        admin_response TEXT,
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+      )
+    `);
+
+    // Bugs table
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS bugs (
+        bug_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        message TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        is_resolved BOOLEAN DEFAULT 0,
+        admin_notes TEXT,
         FOREIGN KEY (user_id) REFERENCES users(user_id)
       )
     `);
@@ -342,9 +358,33 @@ export async function updateAssignment(assignmentId, field, value) {
 
 export async function deleteAssignment(assignmentId) {
   try {
-    await db.run('DELETE FROM assignments WHERE assignment_id = ?', [assignmentId]);
+    // Start transaction to ensure data consistency
+    await db.run('BEGIN TRANSACTION');
+    
+    // First, delete dependent submissions
+    await db.run('DELETE FROM submissions WHERE assignment_id = ?', [assignmentId]);
+    
+    // Then delete the assignment
+    const result = await db.run('DELETE FROM assignments WHERE assignment_id = ?', [assignmentId]);
+    
+    // Commit transaction
+    await db.run('COMMIT');
+    
+    // Check if assignment was actually deleted
+    if (result.changes === 0) {
+      console.warn(`No assignment found with ID: ${assignmentId}`);
+      return false;
+    }
+    
+    console.log(`Successfully deleted assignment ${assignmentId} and its ${result.changes} submissions`);
     return true;
   } catch (error) {
+    // Rollback transaction on error
+    try {
+      await db.run('ROLLBACK');
+    } catch (rollbackError) {
+      console.error('خطأ في التراجع عن المعاملة:', rollbackError);
+    }
     console.error('خطأ في حذف الواجب:', error);
     return false;
   }
@@ -674,15 +714,164 @@ export async function updateUserSettings(userId, settings) {
 export async function getUserSettings(userId) {
   try {
     const user = await db.get(
-      'SELECT reminders_enabled FROM users WHERE user_id = ?',
+      'SELECT reminders_enabled, language FROM users WHERE user_id = ?',
       [userId]
     );
     return user ? {
-      reminders_enabled: Boolean(user.reminders_enabled)
+      reminders_enabled: Boolean(user.reminders_enabled),
+      language: user.language || 'ar'
     } : null;
   } catch (error) {
     console.error('خطأ في جلب إعدادات المستخدم:', error);
     return null;
+  }
+}
+
+// Bug reporting functions
+export async function addBugReport(userId, message) {
+  try {
+    const result = await db.run(
+      'INSERT INTO bugs (user_id, message) VALUES (?, ?)',
+      [userId, message]
+    );
+    return result.lastID;
+  } catch (error) {
+    console.error('خطأ في إضافة تقرير الخطأ:', error);
+    return null;
+  }
+}
+
+export async function getBugReports(limit = 50) {
+  try {
+    const bugs = await db.all(`
+      SELECT b.*, u.username, u.first_name 
+      FROM bugs b 
+      JOIN users u ON b.user_id = u.user_id 
+      ORDER BY b.created_at DESC 
+      LIMIT ?
+    `, [limit]);
+    return bugs;
+  } catch (error) {
+    console.error('خطأ في جلب تقارير الأخطاء:', error);
+    return [];
+  }
+}
+
+// Enhanced feedback functions
+export async function addFeedback(userId, message) {
+  try {
+    const result = await db.run(
+      'INSERT INTO feedback (user_id, message) VALUES (?, ?)',
+      [userId, message]
+    );
+    return result.lastID;
+  } catch (error) {
+    console.error('خطأ في إضافة التغذية الراجعة:', error);
+    return null;
+  }
+}
+
+export async function getFeedback(limit = 50) {
+  try {
+    const feedback = await db.all(`
+      SELECT f.*, u.username, u.first_name 
+      FROM feedback f 
+      JOIN users u ON f.user_id = u.user_id 
+      ORDER BY f.created_at DESC 
+      LIMIT ?
+    `, [limit]);
+    return feedback;
+  } catch (error) {
+    console.error('خطأ في جلب التغذية الراجعة:', error);
+    return [];
+  }
+}
+
+// Reminder functions for new commands
+export async function getUserReminders(userId) {
+  try {
+    const reminders = await db.all(
+      'SELECT * FROM custom_reminders WHERE user_id = ? AND is_sent = 0 ORDER BY reminder_datetime ASC',
+      [userId]
+    );
+    return reminders;
+  } catch (error) {
+    console.error('خطأ في جلب تذكيرات المستخدم:', error);
+    return [];
+  }
+}
+
+export async function deleteReminder(userId, reminderId) {
+  try {
+    const result = await db.run(
+      'DELETE FROM custom_reminders WHERE reminder_id = ? AND user_id = ?',
+      [reminderId, userId]
+    );
+    return result.changes > 0;
+  } catch (error) {
+    console.error('خطأ في حذف التذكير:', error);
+    return false;
+  }
+}
+
+// Lessons functions for upcoming lessons
+export async function getUpcomingLessons(days = 7) {
+  try {
+    const currentDate = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(currentDate.getDate() + days);
+    
+    const lessons = await db.all(`
+      SELECT l.*, c.name as course_name 
+      FROM lessons l 
+      LEFT JOIN courses c ON l.course_id = c.course_id 
+      WHERE date(l.date) BETWEEN date('now') AND date('now', '+${days} days')
+      ORDER BY l.date ASC, l.time ASC
+    `);
+    return lessons;
+  } catch (error) {
+    console.error('خطأ في جلب الدروس القادمة:', error);
+    return [];
+  }
+}
+
+// User language functions
+export async function updateUserLanguage(userId, language) {
+  try {
+    const result = await db.run(
+      'UPDATE users SET language = ? WHERE user_id = ?',
+      [language, userId]
+    );
+    return result.changes > 0;
+  } catch (error) {
+    console.error('خطأ في تحديث لغة المستخدم:', error);
+    return false;
+  }
+}
+
+export async function getUserLanguage(userId) {
+  try {
+    const user = await db.get(
+      'SELECT language FROM users WHERE user_id = ?',
+      [userId]
+    );
+    return user ? user.language || 'ar' : 'ar';
+  } catch (error) {
+    console.error('خطأ في جلب لغة المستخدم:', error);
+    return 'ar';
+  }
+}
+
+// Broadcast functions
+export async function getAllVerifiedUsers() {
+  try {
+    const users = await db.all(
+      'SELECT user_id, username, first_name FROM users WHERE is_verified = 1'
+    );
+    return users;
+  } catch (error) {
+    console.error('خطأ في جلب المستخدمين المفعلين:', error);
+    return [];
   }
 }
 
