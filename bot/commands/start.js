@@ -1,7 +1,7 @@
 // bot/commands/start.js
 import { addUser, isUserVerified } from '../utils/database.js';
 import { config } from '../../config.js';
-import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
+import { escapeMarkdownV2, bold, italic, code } from '../utils/escapeMarkdownV2.js';
 import { Markup } from 'telegraf';
 
 export async function handleStart(ctx) {
@@ -30,36 +30,35 @@ export async function handleStart(ctx) {
     const verified = userData?.verified || false;
     console.log('[START] Verification status', { verified });
 
-    // Build response message
-    let message = escapeMarkdownV2(
-      `🤝 *مرحبًا بك في بوت معين المجتهدين*\n\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n\n`
-    );
+    // Build response message with professional formatting
+    let message = `🤝 ${bold('مرحبًا بك في بوت معين المجتهدين')}\n\n`;
+    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
     if (verified) {
-      message += escapeMarkdownV2(
-        `✅ حسابك مفعل بالفعل!\n\n` +
-        `يمكنك الآن استخدام جميع ميزات البوت:\n\n`
-      );
+      message += `✅ ${bold('حسابك مفعل بالفعل!')}\n\n`;
+      message += `يمكنك الآن استخدام جميع ميزات البوت:\n\n`;
     } else {
-      message += escapeMarkdownV2(
-        `🔒 حسابك غير مفعل حاليًا\n\n` +
-        `لتفعيل حسابك واستخدام جميع الميزات، استخدم:\n\n` +
-        `\`/verify كود_التفعيل\`\n\n` +
-        `💡 للحصول على الكود، تواصل مع: ${config.admin.supportChannel}\n\n`
-      );
+      message += `🔒 ${bold('حسابك غير مفعل حاليًا')}\n\n`;
+      message += `لتفعيل حسابك واستخدام جميع الميزات، استخدم:\n\n`;
+      message += `${code('/verify كود_التفعيل')}\n\n`;
+      message += `💡 للحصول على الكود، تواصل مع: ${escapeMarkdownV2(config.admin.supportChannel)}\n\n`;
     }
 
-    message += escapeMarkdownV2(
-      `📚 *الميزات المتاحة:*\n\n` +
-      `• 📋 /profile \\- عرض ملفك الشخصي\n` +
-      `• 📅 /attendance \\- تسجيل الحضور\n` +
-      `• ❓ /faq \\- الأسئلة الشائعة\n` +
-      `• 📝 /submit \\- إرسال إجابة واجب\n\n` +
-      `📞 للدعم والمساعدة: ${config.admin.supportChannel}\n\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n\n` +
-      `🤖 بوت معين المجتهدين`
-    );
+    message += `📚 ${bold('الميزات المتاحة:')}\n\n`;
+    message += `• 📋 ${code('/profile')} \\- عرض ملفك الشخصي\n`;
+    message += `• 📅 ${code('/attendance')} \\- تسجيل الحضور\n`;
+    message += `• ❓ ${code('/faq')} \\- الأسئلة الشائعة\n`;
+    message += `• 📝 ${code('/submit')} \\- إرسال إجابة واجب\n`;
+    
+    if (verified) {
+      message += `• ⏰ ${code('/addreminder')} \\- إضافة تذكير شخصي\n`;
+      message += `• 📋 ${code('/listreminders')} \\- عرض التذكيرات\n`;
+      message += `• 🗑️ ${code('/deletereminder')} \\- حذف تذكير\n`;
+    }
+    
+    message += `\n📞 للدعم والمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}\n\n`;
+    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    message += `🤖 ${italic('بوت معين المجتهدين')}`;
 
     // Create inline keyboard based on verification status
     let keyboard;
@@ -76,6 +75,9 @@ export async function handleStart(ctx) {
         [
           Markup.button.callback('❓ الأسئلة الشائعة', 'faq'),
           Markup.button.callback('🆘 المساعدة', 'help')
+        ],
+        [
+          Markup.button.callback('⚙️ الإعدادات', 'settings')
         ]
       ]);
     } else {
@@ -91,7 +93,7 @@ export async function handleStart(ctx) {
       ]);
     }
 
-    console.log('[START] Sending response', { message });
+    console.log('[START] Sending response');
     await ctx.reply(message, {
       parse_mode: 'MarkdownV2',
       disable_web_page_preview: true,
@@ -122,9 +124,7 @@ export async function handleStart(ctx) {
     }
 
     await ctx.reply(
-      escapeMarkdownV2(
-        `❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`
-      ),
+      `❌ ${escapeMarkdownV2('حدث خطأ، حاول مرة أخرى أو تواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
       { parse_mode: 'MarkdownV2' }
     );
     console.log('[START] Error response sent to user');
