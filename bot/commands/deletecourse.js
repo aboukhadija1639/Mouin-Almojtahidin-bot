@@ -10,9 +10,9 @@ export async function handleDeleteCourse(ctx) {
     // Check if user is admin
     if (!config.admin.userIds.includes(userId)) {
       await ctx.reply(
-        `🚫 *غير مسموح*\nn\nn` +
-        `هذا الأمر مخصص للمدراء فقط\n.\nn\nn` +
-        `للمساعدة، تواصل مع ${config.admin.supportChannel.replace(/@/g, '\n@')}`,
+        `🚫 *${escapeMarkdownV2('غير مسموح')}*\n\n` +
+        `${escapeMarkdownV2('هذا الأمر مخصص للمدراء فقط.')}\n\n` +
+        `${escapeMarkdownV2('للمساعدة، تواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
         { parse_mode: 'MarkdownV2' }
       );
       return;
@@ -22,7 +22,8 @@ export async function handleDeleteCourse(ctx) {
     const args = messageText.split(' ');
     if (args.length < 2) {
       // Show available courses
-      const courses = await getCourses();
+      const coursesResult = await getCourses();
+      const courses = coursesResult.success ? coursesResult.data : [];
       
       if (courses.length === 0) {
         await ctx.reply(

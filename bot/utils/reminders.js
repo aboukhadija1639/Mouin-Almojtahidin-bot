@@ -20,7 +20,8 @@ export async function scheduleAllReminders() {
     clearAllScheduledJobs();
 
     // Get all lessons from database
-    const lessons = await getLessons();
+    const lessonsResult = await getLessons();
+    const lessons = lessonsResult.success ? lessonsResult.data : [];
     
     // Also get lessons from config as backup/initial data
     const configLessons = config.schedule.lessons;

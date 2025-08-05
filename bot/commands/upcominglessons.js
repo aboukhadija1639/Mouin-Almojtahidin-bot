@@ -8,7 +8,8 @@ export async function handleUpcominglessons(ctx) {
     const userId = ctx.from.id;
     
     // Get upcoming lessons (next 7 days)
-    const lessons = await getUpcomingLessons(7);
+    const lessonsResult = await getUpcomingLessons(7);
+    const lessons = lessonsResult.success ? lessonsResult.data : [];
     
     if (!lessons || lessons.length === 0) {
       await ctx.reply(

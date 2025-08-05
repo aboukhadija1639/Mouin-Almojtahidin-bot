@@ -73,6 +73,7 @@ export function italic(text) {
  * @returns {string} - Code formatted text
  */
 export function code(text) {
+  // For code blocks, we only need to escape backticks
   return `\`${text.replace(/`/g, '\\`')}\``;
 }
 
@@ -84,4 +85,43 @@ export function code(text) {
  */
 export function link(text, url) {
   return `[${escapeMarkdownV2(text)}](${url})`;
+}
+
+/**
+ * Creates preformatted code block in MarkdownV2 format
+ * @param {string} text - Text to format as code block
+ * @param {string} language - Programming language for syntax highlighting (optional)
+ * @returns {string} - Code block formatted text
+ */
+export function codeBlock(text, language = '') {
+  // For code blocks, we need to escape triple backticks if they exist in content
+  const escapedText = text.replace(/```/g, '\\`\\`\\`');
+  return `\`\`\`${language}\n${escapedText}\n\`\`\``;
+}
+
+/**
+ * Creates underlined text in MarkdownV2 format
+ * @param {string} text - Text to underline
+ * @returns {string} - Underlined formatted text
+ */
+export function underline(text) {
+  return `__${escapeMarkdownV2(text)}__`;
+}
+
+/**
+ * Creates strikethrough text in MarkdownV2 format
+ * @param {string} text - Text to strike through
+ * @returns {string} - Strikethrough formatted text
+ */
+export function strikethrough(text) {
+  return `~${escapeMarkdownV2(text)}~`;
+}
+
+/**
+ * Creates spoiler text in MarkdownV2 format
+ * @param {string} text - Text to make spoiler
+ * @returns {string} - Spoiler formatted text
+ */
+export function spoiler(text) {
+  return `||${escapeMarkdownV2(text)}||`;
 }

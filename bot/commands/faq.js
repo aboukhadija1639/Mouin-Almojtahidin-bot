@@ -21,16 +21,14 @@ export async function handleFaq(ctx) {
     ];
     console.log('[FAQ] Retrieved FAQs:', faqs);
 
-    let message = escapeMarkdownV2('❓ *الأسئلة الشائعة*\n');
-    message += escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━\n');
+    let message = `❓ *${escapeMarkdownV2('الأسئلة الشائعة')}*\n\n`;
+    message += `${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━')}\n\n`;
     faqs.forEach((faq, index) => {
-      message += escapeMarkdownV2(`*${index + 1}\\. ${faq.question}*\n`);
-      message += escapeMarkdownV2(faq.answer) + '\n';
+      message += `${index + 1}\\. *${escapeMarkdownV2(faq.question)}*\n`;
+      message += `${escapeMarkdownV2(faq.answer)}\n\n`;
     });
-    message += escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━\n');
-    message += escapeMarkdownV2(
-      `💡 *لم تجد إجابة؟* تواصل مع ${config.admin.supportChannel}`
-    );
+    message += `${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━')}\n`;
+    message += `💡 *${escapeMarkdownV2('لم تجد إجابة؟')}* ${escapeMarkdownV2('تواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)}`;
 
     console.log('[FAQ] Sending response to Telegram:', message);
     await ctx.reply(message, {
