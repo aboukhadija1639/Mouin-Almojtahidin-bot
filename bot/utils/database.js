@@ -619,34 +619,6 @@ export async function deleteCustomReminder(reminderId, userId) {
   }
 }
 
-// Feedback functions
-export async function addFeedback(userId, message) {
-  try {
-    const result = await db.run(
-      'INSERT INTO feedback (user_id, message, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
-      [userId, message]
-    );
-    return result.lastID;
-  } catch (error) {
-    console.error('خطأ في إضافة التغذية الراجعة:', error);
-    return null;
-  }
-}
-
-export async function getFeedback() {
-  try {
-    const feedback = await db.all(`
-      SELECT f.*, u.username, u.first_name 
-      FROM feedback f 
-      LEFT JOIN users u ON f.user_id = u.user_id 
-      ORDER BY f.created_at DESC
-    `);
-    return feedback;
-  } catch (error) {
-    console.error('خطأ في جلب التغذية الراجعة:', error);
-    return [];
-  }
-}
 
 // Export functions
 export async function exportAttendanceData() {
