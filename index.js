@@ -25,6 +25,8 @@ import { handleAssignments } from './bot/commands/assignments.js';
 import { handleReminders } from './bot/commands/reminders.js';
 import { handleHelp } from './bot/commands/help.js';
 import { handleDeleteCourse } from './bot/commands/deletecourse.js';
+import { handleAddCourse } from './bot/commands/addcourse.js';
+import { handleUpdateCourse } from './bot/commands/updatecourse.js';
 import { handleAddReminder } from './bot/commands/addreminder.js';
 import { handleExport } from './bot/commands/export.js';
 import { handleFeedback, handleViewFeedback } from './bot/commands/feedback.js';
@@ -206,7 +208,7 @@ async function launchBotWithRetry(bot, maxRetries = 5) {
           allowedUpdates: ['message', 'callback_query', 'inline_query']
         }),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Bot launch timed out after 60 seconds')), 60000)
+          setTimeout(() => reject(new Error('Bot launch timed out after 30 seconds')), 30000)
         )
       ]);
       
@@ -398,6 +400,8 @@ function registerCommands(bot) {
   bot.command('updateassignment', requireAdmin, handleUpdateAssignment);
   bot.command('deleteassignment', requireAdmin, handleDeleteAssignment);
   bot.command('deletecourse', requireAdmin, handleDeleteCourse);
+  bot.command('addcourse', requireAdmin, handleAddCourse);
+  bot.command('updatecourse', requireAdmin, handleUpdateCourse);
   bot.command('export', requireAdmin, handleExport);
   bot.command('viewfeedback', requireAdmin, handleViewFeedback);
   bot.command('broadcast', requireAdmin, handleBroadcast);
@@ -417,8 +421,8 @@ function registerCommands(bot) {
       '/assignments', '/attendance', '/reminders', '/submit', '/addreminder',
       '/listreminders', '/deletereminder', '/upcominglessons', '/feedback', 
       '/reportbug', '/settings', '/stats', '/publish', '/addassignment', 
-      '/updateassignment', '/deleteassignment', '/deletecourse', '/export', 
-      '/viewfeedback', '/broadcast'
+      '/updateassignment', '/deleteassignment', '/deletecourse', '/addcourse', 
+      '/updatecourse', '/export', '/viewfeedback', '/broadcast'
     ];
     
     if (!knownCommands.includes(command)) {

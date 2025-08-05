@@ -266,10 +266,10 @@ export async function toggleUserReminders(userId) {
 export async function getLessons() {
   try {
     const lessons = await db.all('SELECT * FROM lessons ORDER BY date, time');
-    return lessons;
+    return { success: true, data: lessons };
   } catch (error) {
     console.error('خطأ في جلب الدروس:', error);
-    return [];
+    return { success: false, data: [] };
   }
 }
 
@@ -564,18 +564,82 @@ function getDb() {
 export async function getCourses() {
   try {
     const courses = await db.all(`
-      SELECT DISTINCT course_id, 
+      SELECT c.course_id, c.name, c.description, c.created_at,
              COUNT(DISTINCT l.lesson_id) as lesson_count,
              COUNT(DISTINCT a.assignment_id) as assignment_count
-      FROM lessons l
-      LEFT JOIN assignments a ON l.course_id = a.course_id
-      GROUP BY course_id
-      ORDER BY course_id
+      FROM courses c
+      LEFT JOIN lessons l ON c.course_id = l.course_id
+      LEFT JOIN assignments a ON c.course_id = a.course_id
+      GROUP BY c.course_id, c.name, c.description, c.created_at
+      ORDER BY c.course_id
     `);
-    return courses;
+    return { success: true, data: courses };
   } catch (error) {
     console.error('خطأ في جلب الكورسات:', error);
-    return [];
+    return { success: false, data: [] };
+  }
+}
+
+// Course management functions
+export async function addCourse(name, description) {
+  try {
+    const result = await db.run(
+      'INSERT INTO courses (name, description, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+      [name, description]
+    );
+    return { success: true, courseId: result.lastID };
+  } catch (error) {
+    console.error('خطأ في إضافة الكورس:', error);
+    return { success: false, message: 'خطأ في إضافة الكورس' };
+  }
+}
+
+export async function updateCourse(courseId, field, value) {
+  try {
+    const allowedFields = ['name', 'description'];
+    if (!allowedFields.includes(field)) {
+      return { success: false, message: 'حقل غير مسموح' };
+    }
+    
+    const result = await db.run(
+      `UPDATE courses SET ${field} = ? WHERE course_id = ?`,
+      [value, courseId]
+    );
+    
+    if (result.changes > 0) {
+      return { success: true };
+    } else {
+      return { success: false, message: 'الكورس غير موجود' };
+    }
+  } catch (error) {
+    console.error('خطأ في تحديث الكورس:', error);
+    return { success: false, message: 'خطأ في تحديث الكورس' };
+  }
+}
+
+export async function deleteCourse(courseId) {
+  try {
+    // Check if course exists
+    const course = await db.get('SELECT course_id FROM courses WHERE course_id = ?', [courseId]);
+    if (!course) {
+      return { success: false, message: 'الكورس غير موجود' };
+    }
+    
+    // Delete related records first
+    await db.run('DELETE FROM lessons WHERE course_id = ?', [courseId]);
+    await db.run('DELETE FROM assignments WHERE course_id = ?', [courseId]);
+    
+    // Delete the course
+    const result = await db.run('DELETE FROM courses WHERE course_id = ?', [courseId]);
+    
+    if (result.changes > 0) {
+      return { success: true };
+    } else {
+      return { success: false, message: 'فشل في حذف الكورس' };
+    }
+  } catch (error) {
+    console.error('خطأ في حذف الكورس:', error);
+    return { success: false, message: 'خطأ في حذف الكورس' };
   }
 }
 
@@ -800,10 +864,10 @@ export async function getUpcomingLessons(days = 7) {
       WHERE date(l.date) BETWEEN date('now') AND date('now', '+${days} days')
       ORDER BY l.date ASC, l.time ASC
     `);
-    return lessons;
+    return { success: true, data: lessons };
   } catch (error) {
     console.error('خطأ في جلب الدروس القادمة:', error);
-    return [];
+    return { success: false, data: [] };
   }
 }
 

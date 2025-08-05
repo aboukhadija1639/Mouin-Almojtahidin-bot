@@ -1,10 +1,12 @@
 import { getLessons } from '../utils/database.js';
 import { config } from '../../config.js';
+import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
 
 export async function handleCourses(ctx) {
   try {
     // Get all lessons from database and config
-    const dbLessons = await getLessons();
+    const lessonsResult = await getLessons();
+    const dbLessons = lessonsResult.success ? lessonsResult.data : [];
     const configLessons = config.schedule.lessons;
     
     // Combine lessons (database takes priority)
@@ -29,9 +31,9 @@ export async function handleCourses(ctx) {
 
     if (allLessons.length === 0) {
       await ctx.reply(
-        `📚 *قائمة الدروس*\n\n` +
-        `لا توجد دروس مجدولة حالياً\\.\n` +
-        `💡 للمساعدة: ${config.admin.supportChannel.replace(/@/g, '\\@')}`,
+        `📚 *${escapeMarkdownV2('قائمة الدروس')}*\n\n` +
+        `${escapeMarkdownV2('لا توجد دروس مجدولة حالياً.')}\n` +
+        `💡 ${escapeMarkdownV2('للمساعدة:')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
         { 
           parse_mode: 'MarkdownV2',
           disable_web_page_preview: true 
@@ -48,7 +50,7 @@ export async function handleCourses(ctx) {
     });
 
     // Build courses message
-    let message = `📚 *قائمة الدروس المجدولة*\n\n`;
+    let message = `📚 *${escapeMarkdownV2('قائمة الدروس المجدولة')}*\n\n`;
     
     let upcomingLessons = [];
     let pastLessons = [];
@@ -59,12 +61,9 @@ export async function handleCourses(ctx) {
       const formattedDate = new Date(lesson.date).toLocaleDateString('ar-SA');
       const formattedTime = lesson.time;
       
-      // Escape special characters for MarkdownV2
-      const escapedTitle = lesson.title.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
-      
-      const lessonInfo = `${index + 1}\\. *${escapedTitle}*\n` +
-        `   📅 التاريخ: ${formattedDate}\n` +
-        `   ⏰ الوقت: ${formattedTime}\n`;
+      const lessonInfo = `${index + 1}\\. *${escapeMarkdownV2(lesson.title)}*\n` +
+        `   📅 ${escapeMarkdownV2('التاريخ:')} ${escapeMarkdownV2(formattedDate)}\n` +
+        `   ⏰ ${escapeMarkdownV2('الوقت:')} ${escapeMarkdownV2(formattedTime)}\n`;
         
       if (lessonDate > now) {
         upcomingLessons.push(lessonInfo);
@@ -75,22 +74,22 @@ export async function handleCourses(ctx) {
 
     // Add upcoming lessons
     if (upcomingLessons.length > 0) {
-      message += `🔮 *الدروس القادمة:*\n\n`;
+      message += `🔮 *${escapeMarkdownV2('الدروس القادمة:')}*\n\n`;
       message += upcomingLessons.join('\n');
       message += `\n`;
     }
 
     // Add past lessons
     if (pastLessons.length > 0) {
-      message += `📋 *الدروس السابقة:*\n\n`;
+      message += `📋 *${escapeMarkdownV2('الدروس السابقة:')}*\n\n`;
       message += pastLessons.join('\n');
       message += `\n`;
     }
 
-    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-    message += `📊 إجمالي الدروس: ${allLessons.length}\n`;
-    message += `🔔 استخدم /attendance لتسجيل حضورك بعد الدرس\n\n`;
-    message += `💡 للمساعدة: ${config.admin.supportChannel.replace(/@/g, '\\@')}`;
+    message += `${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━')}\n\n`;
+    message += `📊 ${escapeMarkdownV2('إجمالي الدروس:')} ${allLessons.length}\n`;
+    message += `🔔 ${escapeMarkdownV2('استخدم /attendance لتسجيل حضورك بعد الدرس')}\n\n`;
+    message += `💡 ${escapeMarkdownV2('للمساعدة:')} ${escapeMarkdownV2(config.admin.supportChannel)}`;
 
     await ctx.reply(message, { 
       parse_mode: 'MarkdownV2',
@@ -99,6 +98,9 @@ export async function handleCourses(ctx) {
 
   } catch (error) {
     console.error('خطأ في أمر /courses:', error);
-    await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`);
+    await ctx.reply(
+      `❌ ${escapeMarkdownV2('حدث خطأ، حاول مرة أخرى أو تواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
+      { parse_mode: 'MarkdownV2' }
+    );
   }
 }
