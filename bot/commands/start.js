@@ -2,6 +2,7 @@
 import { addUser, isUserVerified } from '../utils/database.js';
 import { config } from '../../config.js';
 import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
+import { Markup } from 'telegraf';
 
 export async function handleStart(ctx) {
   console.log('[START] Command invoked', { user: ctx.from, timestamp: new Date().toISOString() });
@@ -60,10 +61,41 @@ export async function handleStart(ctx) {
       `🤖 بوت معين المجتهدين`
     );
 
+    // Create inline keyboard based on verification status
+    let keyboard;
+    if (verified) {
+      keyboard = Markup.inlineKeyboard([
+        [
+          Markup.button.callback('📋 ملفي الشخصي', 'profile'),
+          Markup.button.callback('📚 الدروس', 'courses')
+        ],
+        [
+          Markup.button.callback('📝 الواجبات', 'assignments'),
+          Markup.button.callback('⏰ التذكيرات', 'reminders')
+        ],
+        [
+          Markup.button.callback('❓ الأسئلة الشائعة', 'faq'),
+          Markup.button.callback('🆘 المساعدة', 'help')
+        ]
+      ]);
+    } else {
+      keyboard = Markup.inlineKeyboard([
+        [
+          Markup.button.callback('🔑 تفعيل الحساب', 'verify_account'),
+          Markup.button.callback('❓ الأسئلة الشائعة', 'faq')
+        ],
+        [
+          Markup.button.callback('🆘 المساعدة', 'help'),
+          Markup.button.callback('📞 الدعم', 'support')
+        ]
+      ]);
+    }
+
     console.log('[START] Sending response', { message });
     await ctx.reply(message, {
       parse_mode: 'MarkdownV2',
       disable_web_page_preview: true,
+      ...keyboard
     });
     console.log('[START] Response sent successfully');
   } catch (error) {

@@ -29,6 +29,12 @@ import { handleAddReminder } from './bot/commands/addreminder.js';
 import { handleExport } from './bot/commands/export.js';
 import { handleFeedback, handleViewFeedback } from './bot/commands/feedback.js';
 import { handleSettings } from './bot/commands/settings.js';
+import { handleListReminders } from './bot/commands/listreminders.js';
+import { handleDeleteReminder } from './bot/commands/deletereminder.js';
+import { handleUpcomingLessons } from './bot/commands/upcominglessons.js';
+import { handleBroadcast } from './bot/commands/broadcast.js';
+import { handleReportBug } from './bot/commands/reportbug.js';
+import { escapeMarkdownV2 } from './bot/utils/escapeMarkdownV2.js';
 
 // Validate environment variables
 function validateConfig() {
@@ -126,19 +132,59 @@ async function manualPolling(bot, timeout = 10000) {
   }
 }
 
-// Launch bot with retry logic
-async function launchBotWithRetry(bot, maxRetries = 3) {
+// Webhook server setup as fallback
+async function setupWebhookServer(bot, port = 3000) {
+  try {
+    const express = await import('express');
+    const app = express.default();
+    
+    // Parse JSON bodies
+    app.use(express.json());
+    
+    // Health check endpoint
+    app.get('/health', (req, res) => {
+      res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    });
+    
+    // Webhook endpoint
+    app.post('/bot', (req, res) => {
+      try {
+        bot.handleUpdate(req.body);
+        res.sendStatus(200);
+      } catch (error) {
+        console.error('Webhook error:', error);
+        logError(error, 'WEBHOOK_HANDLER');
+        res.sendStatus(500);
+      }
+    });
+    
+    const server = app.listen(port, () => {
+      console.log(`✅ Webhook server running on port ${port}`);
+      logActivity(`Webhook server started on port ${port}`);
+    });
+    
+    return server;
+  } catch (error) {
+    console.error('❌ Failed to setup webhook server:', error);
+    logError(error, 'WEBHOOK_SETUP');
+    return null;
+  }
+}
+
+// Launch bot with retry logic and webhook fallback
+async function launchBotWithRetry(bot, maxRetries = 5) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`Attempting to launch bot (Attempt ${attempt}/${maxRetries})`);
+      console.log(`Attempting to launch bot with polling (Attempt ${attempt}/${maxRetries})`);
       await Promise.race([
         bot.launch({ dropPendingUpdates: true }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Bot launch timed out after 60 seconds')), 60000))
       ]);
-      console.log('✅ Bot launched successfully');
-      return true;
+      console.log('✅ Bot launched successfully with polling');
+      logActivity('Bot launched successfully with polling');
+      return { success: true, mode: 'polling' };
     } catch (error) {
-      console.error(`❌ Failed to launch bot (Attempt ${attempt}):`, {
+      console.error(`❌ Failed to launch bot with polling (Attempt ${attempt}):`, {
         message: error.message,
         stack: error.stack,
         response: error.response ? {
@@ -147,15 +193,47 @@ async function launchBotWithRetry(bot, maxRetries = 3) {
         } : 'No response data',
       });
       logError(error, `BOT_LAUNCH_ATTEMPT_${attempt}`);
+      
       if (attempt < maxRetries) {
-        const delay = Math.pow(2, attempt) * 5000; // Increased delay: 5s, 10s, 20s
+        // Exponential backoff: 5s, 10s, 20s, 40s, 80s
+        const delay = Math.pow(2, attempt) * 5000;
         console.log(`Retrying launch in ${delay/1000} seconds...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       } else {
-        console.error('❌ Max retries reached for bot launch, attempting manual polling...');
-        logError(new Error('Failed to launch bot after max retries'), 'BOT_LAUNCH_FAILED');
+        console.log('❌ Max polling retries reached, attempting webhook fallback...');
+        logActivity('Polling failed, attempting webhook fallback');
+        
+        // Try webhook mode as fallback
+        try {
+          const webhookServer = await setupWebhookServer(bot);
+          if (webhookServer) {
+            // For local development, you might want to use ngrok or similar
+            // For production, use your actual domain
+            const webhookUrl = process.env.WEBHOOK_URL || `http://localhost:3000/bot`;
+            
+            if (process.env.WEBHOOK_URL) {
+              await bot.telegram.setWebhook(webhookUrl);
+              console.log('✅ Bot launched successfully with webhook mode');
+              logActivity(`Bot launched with webhook: ${webhookUrl}`);
+              return { success: true, mode: 'webhook', server: webhookServer };
+            } else {
+              console.warn('⚠️ WEBHOOK_URL not set, webhook server running locally only');
+              logActivity('Webhook server running locally, WEBHOOK_URL not configured');
+              return { success: true, mode: 'webhook-local', server: webhookServer };
+            }
+          }
+        } catch (webhookError) {
+          console.error('❌ Webhook fallback failed:', webhookError);
+          logError(webhookError, 'WEBHOOK_FALLBACK');
+        }
+        
+        // Final fallback to manual polling
+        console.log('Attempting manual polling as last resort...');
         const manualSuccess = await manualPolling(bot);
-        return manualSuccess;
+        return { 
+          success: manualSuccess, 
+          mode: manualSuccess ? 'manual-polling' : 'failed' 
+        };
       }
     }
   }
@@ -204,15 +282,17 @@ async function initBot() {
     console.log('✅ Shutdown handlers set');
     
     console.log('Launching bot...');
-    const launched = await launchBotWithRetry(bot);
-    if (!launched) {
+    const launchResult = await launchBotWithRetry(bot);
+    if (!launchResult.success) {
       console.warn('⚠️ Bot failed to launch, but initialization completed. Test commands manually.');
       logActivity('Bot failed to launch, initialization completed');
     } else {
       console.log('🚀 بوت معين المجتهدين يعمل بنجاح!');
       console.log(`📊 معرف البوت: @${botInfo.username}`);
       console.log(`👥 عدد المدراء: ${config.admin.userIds.length}`);
+      console.log(`🔧 وضع التشغيل: ${launchResult.mode}`);
       logBotStartup();
+      logActivity(`Bot launched in ${launchResult.mode} mode`);
     }
     
     return bot;
@@ -246,7 +326,11 @@ function registerCommands(bot) {
   bot.command('reminders', handleReminders);
   bot.command('submit', handleSubmit);
   bot.command('addreminder', handleAddReminder);
+  bot.command('listreminders', handleListReminders);
+  bot.command('deletereminder', handleDeleteReminder);
+  bot.command('upcominglessons', handleUpcomingLessons);
   bot.command('feedback', handleFeedback);
+  bot.command('reportbug', handleReportBug);
   bot.command('settings', handleSettings);
   
   console.log('Registering admin commands...');
@@ -258,6 +342,7 @@ function registerCommands(bot) {
   bot.command('deletecourse', requireAdmin, handleDeleteCourse);
   bot.command('export', requireAdmin, handleExport);
   bot.command('viewfeedback', requireAdmin, handleViewFeedback);
+  bot.command('broadcast', requireAdmin, handleBroadcast);
   
   console.log('Registering unknown command handler...');
   bot.on('text', async (ctx) => {
@@ -272,8 +357,10 @@ function registerCommands(bot) {
     const knownCommands = [
       '/start', '/verify', '/help', '/faq', '/profile', '/courses', 
       '/assignments', '/attendance', '/reminders', '/submit', '/addreminder',
-      '/feedback', '/settings', '/stats', '/publish', '/addassignment', 
-      '/updateassignment', '/deleteassignment', '/deletecourse', '/export', '/viewfeedback'
+      '/listreminders', '/deletereminder', '/upcominglessons', '/feedback', 
+      '/reportbug', '/settings', '/stats', '/publish', '/addassignment', 
+      '/updateassignment', '/deleteassignment', '/deletecourse', '/export', 
+      '/viewfeedback', '/broadcast'
     ];
     
     if (!knownCommands.includes(command)) {
@@ -310,8 +397,69 @@ function registerCommands(bot) {
     }
   });
   
-  console.log('✅ All bot commands registered');
-  logActivity('تم تسجيل جميع أوامر البوت');
+  // Register callback query handlers for inline buttons
+  console.log('Registering callback query handlers...');
+  
+  bot.action('profile', async (ctx) => {
+    await ctx.answerCbQuery();
+    await handleProfile(ctx);
+  });
+  
+  bot.action('courses', async (ctx) => {
+    await ctx.answerCbQuery();
+    await handleCourses(ctx);
+  });
+  
+  bot.action('assignments', async (ctx) => {
+    await ctx.answerCbQuery();
+    await handleAssignments(ctx);
+  });
+  
+  bot.action('reminders', async (ctx) => {
+    await ctx.answerCbQuery();
+    await handleReminders(ctx);
+  });
+  
+  bot.action('faq', async (ctx) => {
+    await ctx.answerCbQuery();
+    await handleFaq(ctx);
+  });
+  
+  bot.action('help', async (ctx) => {
+    await ctx.answerCbQuery();
+    await handleHelp(ctx);
+  });
+  
+  bot.action('verify_account', async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.reply(
+      escapeMarkdownV2(
+        `🔑 *تفعيل الحساب*\n\n` +
+        `للحصول على كود التفعيل، تواصل مع: ${config.admin.supportChannel}\n\n` +
+        `بعد الحصول على الكود، استخدم:\n` +
+        `\`/verify كود_التفعيل\``
+      ),
+      { parse_mode: 'MarkdownV2' }
+    );
+  });
+  
+  bot.action('support', async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.reply(
+      escapeMarkdownV2(
+        `📞 *الدعم والمساعدة*\n\n` +
+        `للحصول على المساعدة، تواصل مع:\n` +
+        `${config.admin.supportChannel}\n\n` +
+        `أو استخدم:\n` +
+        `• \`/feedback\` لإرسال تغذية راجعة\n` +
+        `• \`/reportbug\` للإبلاغ عن مشكلة تقنية`
+      ),
+      { parse_mode: 'MarkdownV2' }
+    );
+  });
+
+  console.log('✅ All bot commands and callbacks registered');
+  logActivity('تم تسجيل جميع أوامر البوت والاستدعاءات');
 }
 
 // Setup graceful shutdown handlers
