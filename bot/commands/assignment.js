@@ -272,9 +272,9 @@ export async function handleDeleteAssignment(ctx) {
     }
 
     // Delete assignment
-    const deleteSuccess = await deleteAssignment(assignmentId);
+    const deleteResult = await deleteAssignment(assignmentId);
     
-    if (deleteSuccess) {
+    if (deleteResult.success) {
       await ctx.reply(
         `✅ *تم حذف الواجب بنجاح*\n` +
         `🆔 *رقم الواجب المحذوف:* ${assignmentId}\n` +

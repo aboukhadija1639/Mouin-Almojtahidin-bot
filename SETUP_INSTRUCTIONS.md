@@ -1,245 +1,276 @@
-# Mouin-Almojtahidin-bot Setup Instructions
+# Mouin-Almojtahidin Bot - Setup Instructions
 
-## Overview
-This document provides complete setup and testing instructions for the fixed and enhanced Mouin-Almojtahidin-bot.
+## 🚀 Quick Start
 
-## Issues Fixed
+### 1. Prerequisites
+- Node.js 18+ installed
+- Git installed
+- A Telegram Bot Token (get from @BotFather)
+- Admin Telegram User IDs
 
-### 1. MarkdownV2 Parsing Errors ✅
-- **Issue**: Commands /start, /help, /faq, and /reminders failed with 400: Bad Request due to unescaped reserved characters
-- **Fix**: Updated `bot/utils/escapeMarkdownV2.js` to properly escape all MarkdownV2 reserved characters
-- **Files Modified**: `bot/utils/escapeMarkdownV2.js`, `bot/commands/faq.js`, `bot/commands/courses.js`
+### 2. Installation
 
-### 2. Non-Iterable Errors ✅
-- **Issue**: `lessons is not iterable` in reminders.js and courses.js due to inconsistent database return format
-- **Fix**: Updated database functions to return consistent `{success, data}` format
-- **Files Modified**: `bot/utils/database.js`, `bot/utils/reminders.js`, `bot/commands/courses.js`, `bot/commands/upcominglessons.js`
-
-### 3. Profile and Verification Issues ✅
-- **Issue**: /profile showed incorrect data, verification status issues
-- **Fix**: Database functions now properly handle user data and verification status
-- **Files Modified**: `bot/utils/database.js`, improved user data handling
-
-### 4. Bot Launch Timeout ✅
-- **Issue**: Bot launch timed out after 90 seconds
-- **Fix**: Reduced timeout to 30 seconds and optimized initialization
-- **Files Modified**: `index.js`
-
-### 5. Missing Commands ✅
-- **Issue**: /listreminders, /reportbug, and admin commands not properly implemented
-- **Fix**: All commands are now properly registered and implemented
-- **Files Added**: `bot/commands/addcourse.js`, `bot/commands/updatecourse.js`
-- **Files Modified**: `index.js`, `bot/utils/database.js`
-
-## Project Setup
-
-### 1. Move Project (Recommended)
-Move the project from the space-containing path to:
 ```bash
-# Windows
-C:/Users/mouss/Projects/Mouin-Almojtahidin-bot
+# Clone the repository
+git clone <repository-url>
+cd mouin-almojtahidin-bot
 
-# Linux/Mac
-~/Projects/Mouin-Almojtahidin-bot
-```
-
-### 2. Install Dependencies
-```bash
+# Install dependencies
 npm install
+
+# Copy environment file
+cp .env.example .env
+
+# Edit environment variables
+nano .env
 ```
 
 ### 3. Environment Configuration
-Create or update your `.env` file with:
+
+Edit `.env` file with your settings:
+
 ```env
-# Bot Token (required)
+# Bot Configuration
 BOT_TOKEN=your_telegram_bot_token_here
 
-# Activation Code (required)
-ACTIVATION_CODE=free_palestine1447
-
-# Support Channel (required)
-SUPPORT_CHANNEL=@your_support_channel
-
-# Admin User IDs (comma-separated)
+# Admin Configuration
 ADMIN_USER_IDS=123456789,987654321
+ADMIN_CHAT_ID=-1001234567890
+ADMIN_SUPPORT_CHANNEL=@your_support_channel
 
-# Optional: Admin Chat ID for notifications
-ADMIN_CHAT_ID=your_admin_chat_id
+# Database Configuration
+DATABASE_PATH=./data/mouin_almojtahidin.db
 
-# Optional: Webhook URL for deployment
-WEBHOOK_URL=https://your-domain.com/bot
+# Webhook Configuration (for Render deployment)
+WEBHOOK_URL=https://your-app-name.onrender.com
+WEBHOOK_PATH=/webhook
+PORT=3000
 ```
 
-### 4. Database Setup
-The database will be automatically created when you first run the bot. To populate with test data:
+### 4. Testing
 
 ```bash
-# Option 1: Use the setup script
-node setup_test.js
+# Run comprehensive tests
+node test_bot.js
 
-# Option 2: Manual SQL import (if you have sqlite3 CLI)
-sqlite3 data/mouin_almojtahidin.db < test_data.sql
+# Test specific functionality
+npm test
 ```
 
-### 5. Start the Bot
+### 5. Local Development
+
 ```bash
+# Start in development mode
+npm run dev
+
+# Start in production mode
 npm start
 ```
 
-## Testing Instructions
+## 🔧 Configuration Details
 
-### Public Commands (No verification required)
-Test these commands with any Telegram account:
+### Bot Token
+1. Message @BotFather on Telegram
+2. Create a new bot: `/newbot`
+3. Choose a name and username
+4. Copy the token to `BOT_TOKEN`
 
-```
-/start - Register user and show welcome message
-/help - Display comprehensive help guide
-/faq - Show frequently asked questions
-/verify free_palestine1447 - Verify user account
-```
+### Admin Setup
+1. Get your Telegram User ID (use @userinfobot)
+2. Add to `ADMIN_USER_IDS` (comma-separated)
+3. Set up admin chat/channel for notifications
 
-### User Commands (Requires verification)
-After verification, test these commands:
+### Database
+- SQLite database is created automatically
+- Located at `./data/mouin_almojtahidin.db`
+- Tables created on first run
 
-```
-/profile - Show user profile information
-/courses - List all available courses and lessons
-/assignments - Show active and expired assignments
-/upcominglessons - List lessons in next 7 days
-/attendance 1 - Record attendance for lesson ID 1
-/submit 1 55 - Submit answer "55" for assignment ID 1
-/reminders - Enable/disable reminders
-/listreminders - List all user reminders
-/settings - Update language and preferences
-/reportbug - Report issues to support channel
-```
+## 📋 Available Commands
 
-### Admin Commands (Requires admin privileges)
-Test with admin user IDs from .env:
+### User Commands
+- `/start` - Start the bot
+- `/verify` - Verify account
+- `/profile` - View profile
+- `/settings` - Manage settings
+- `/addreminder` - Add custom reminder
+- `/assignments` - View assignments
+- `/feedback` - Send feedback
+- `/health` - System health
 
-```
-/stats - Display bot statistics
-/addcourse "Math 101" "Basic mathematics" - Create new course
-/updatecourse 1 name "Advanced Math" - Update course field
-/deletecourse 1 - Delete course
-/addassignment 1 "Test Question" "What is 2+2?" "4" "2024-12-31 23:59:59" - Add assignment
-/updateassignment 1 title "Updated Question" - Update assignment
-/deleteassignment 1 - Delete assignment
-/publish "Important announcement" - Publish announcement
-/broadcast users "Message to all users" - Broadcast message
-/export attendance - Export attendance data
-/viewfeedback - View user feedback
-```
+### Admin Commands
+- `/stats` - View statistics
+- `/publish` - Publish announcement
+- `/addassignment` - Add assignment
+- `/deleteassignment` - Delete assignment
+- `/viewfeedback` - View feedback
+- `/broadcast` - Send broadcast message
 
-## Verification Steps
+## 🚀 Deployment
 
-### 1. Database Population
-Verify test data was loaded correctly:
-- 4 courses (Math, Physics, Chemistry, Islamic History)
-- 15 lessons across different dates
-- 10 assignments with various deadlines
-- 4 sample users including admin
+### Render Deployment
 
-### 2. MarkdownV2 Formatting
-All messages should display properly without parsing errors. Look for:
-- Proper bold/italic formatting
-- Escaped special characters
-- Clean message layout
+1. **Create Render Account**
+   - Sign up at render.com
+   - Connect your GitHub repository
 
-### 3. Error Handling
-Test error scenarios:
-- Invalid command syntax
-- Non-existent IDs
-- Unauthorized access to admin commands
-- Network/database errors
+2. **Create Web Service**
+   - New → Web Service
+   - Connect your repository
+   - Set build command: `npm install`
+   - Set start command: `npm start`
 
-### 4. Reminder System
-Test reminder functionality:
-- Check if reminders are scheduled for upcoming lessons
-- Verify reminder messages are sent
-- Test custom reminder addition/deletion
+3. **Environment Variables**
+   - Add all variables from `.env` file
+   - Set `NODE_ENV=production`
 
-### 5. Log Files
-Check log files for proper operation:
+4. **Deploy**
+   - Click "Create Web Service"
+   - Wait for deployment to complete
+
+### Local Deployment
+
 ```bash
-# View combined logs
-tail -f data/combined.log
+# Install PM2 for process management
+npm install -g pm2
 
-# View error logs
-tail -f data/error.log
+# Start the bot
+pm2 start index.js --name "mouin-bot"
+
+# Monitor logs
+pm2 logs mouin-bot
+
+# Restart if needed
+pm2 restart mouin-bot
 ```
 
-## Database Schema
-
-The bot uses SQLite with the following tables:
-
-- **users**: User information and verification status
-- **courses**: Course catalog with descriptions
-- **lessons**: Scheduled lessons with Zoom links
-- **assignments**: Homework assignments with deadlines
-- **submissions**: Student assignment submissions
-- **attendance**: Lesson attendance records
-- **announcements**: Published announcements
-- **custom_reminders**: User-created reminders
-
-## Command List Summary
-
-### Public Commands (9)
-- /start, /verify, /help, /faq, /profile, /courses, /assignments, /upcominglessons, /settings
-
-### User Commands (8)
-- /attendance, /submit, /reminders, /listreminders, /reportbug, /feedback
-
-### Admin Commands (13)
-- /stats, /publish, /broadcast, /addcourse, /updatecourse, /deletecourse
-- /addassignment, /updateassignment, /deleteassignment, /export, /viewfeedback
-
-## Troubleshooting
+## 🔍 Troubleshooting
 
 ### Common Issues
 
-1. **Bot doesn't start**
-   - Check BOT_TOKEN in .env
-   - Verify network connectivity
-   - Check for port conflicts
+1. **Bot not responding**
+   - Check bot token is correct
+   - Verify bot is not blocked
+   - Check webhook/polling mode
 
-2. **Commands return errors**
-   - Verify user verification status
-   - Check admin user IDs
-   - Review log files for specific errors
-
-3. **Database issues**
+2. **Database errors**
    - Ensure data directory exists
    - Check file permissions
-   - Verify SQLite installation
+   - Verify SQLite is working
 
-4. **MarkdownV2 errors**
-   - All special characters should be escaped
-   - Use escapeMarkdownV2 function consistently
-   - Test messages in small batches
+3. **Command not found**
+   - Check command registration in `index.js`
+   - Verify import statements
+   - Check for syntax errors
 
-### Support
+4. **MarkdownV2 parsing errors**
+   - Use `escapeMarkdownV2()` for dynamic content
+   - Check for unescaped special characters
+   - Test with simple text first
 
-For additional help:
-- Check log files in `data/` directory
-- Review bot responses for error messages
-- Contact support channel specified in .env
+### Debug Mode
 
-## Production Deployment
+```bash
+# Enable debug logging
+DEBUG=true npm start
 
-For production deployment:
-1. Use webhook mode instead of polling
-2. Set up proper SSL certificates
-3. Configure environment variables securely
-4. Set up log rotation
-5. Monitor bot performance
-6. Regular database backups
+# Check logs
+tail -f ./data/combined.log
+tail -f ./data/error.log
+```
 
-## Security Notes
+## 📊 Monitoring
 
-- Never commit .env file to version control
-- Regularly rotate bot token
-- Monitor admin access logs
-- Validate all user inputs
-- Use rate limiting to prevent abuse
-- Keep dependencies updated
+### Health Check
+- Use `/health` command to check system status
+- Monitor memory usage and uptime
+- Check database connectivity
+
+### Logs
+- Combined logs: `./data/combined.log`
+- Error logs: `./data/error.log`
+- Application logs in console
+
+### Statistics
+- User count and verification status
+- Assignment and submission statistics
+- System performance metrics
+
+## 🔒 Security
+
+### Rate Limiting
+- Enabled by default
+- Configurable limits in `.env`
+- Prevents abuse and spam
+
+### User Verification
+- Required for most commands
+- Admin-controlled activation
+- Secure verification process
+
+### Data Protection
+- SQL injection prevention
+- Input sanitization
+- Secure database operations
+
+## 📈 Performance
+
+### Optimization Tips
+1. Use webhooks for production
+2. Enable database indexing
+3. Monitor memory usage
+4. Regular log rotation
+5. Efficient error handling
+
+### Scaling
+- Horizontal scaling with multiple instances
+- Database optimization for large datasets
+- Caching for frequently accessed data
+
+## 🆘 Support
+
+### Getting Help
+1. Check this documentation
+2. Review error logs
+3. Test with `/health` command
+4. Contact support channel
+
+### Reporting Issues
+1. Use `/feedback` command
+2. Use `/reportbug` command
+3. Include error details and steps to reproduce
+
+### Contributing
+1. Fork the repository
+2. Create feature branch
+3. Test thoroughly
+4. Submit pull request
+
+## 📝 Changelog
+
+### Version 2.0.0
+- ✅ Fixed all import errors
+- ✅ Enhanced settings with interactive buttons
+- ✅ Added health monitoring
+- ✅ Improved error handling
+- ✅ Enhanced MarkdownV2 formatting
+- ✅ Added comprehensive testing
+- ✅ Fixed database schema issues
+- ✅ Added notification frequency support
+
+### Previous Versions
+- See git history for detailed changes
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🤝 Acknowledgments
+
+- Telegram Bot API
+- Telegraf.js framework
+- SQLite database
+- Node.js community
+
+---
+
+**For technical support, contact: @your_support_channel**

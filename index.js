@@ -30,7 +30,8 @@ import { handleUpdateCourse } from './bot/commands/updatecourse.js';
 import { handleAddReminder } from './bot/commands/addreminder.js';
 import { handleExport } from './bot/commands/export.js';
 import { handleFeedback, handleViewFeedback } from './bot/commands/feedback.js';
-import { handleSettings } from './bot/commands/settings.js';
+import { handleSettings, handleToggleReminders, handleChangeLanguage, handleChangeFrequency, handleSettingsHelp } from './bot/commands/settings.js';
+import { handleHealth } from './bot/commands/health.js';
 import { handleListReminders } from './bot/commands/listreminders.js';
 import { handleDeleteReminder } from './bot/commands/deletereminder.js';
 import { handleUpcomingLessons } from './bot/commands/upcominglessons.js';
@@ -392,6 +393,7 @@ function registerCommands(bot) {
   bot.command('feedback', handleFeedback);
   bot.command('reportbug', handleReportBug);
   bot.command('settings', handleSettings);
+  bot.command('health', handleHealth);
   
   console.log('Registering admin commands...');
   bot.command('stats', requireAdmin, handleStats);
@@ -420,7 +422,7 @@ function registerCommands(bot) {
       '/start', '/verify', '/help', '/faq', '/profile', '/courses', 
       '/assignments', '/attendance', '/reminders', '/submit', '/addreminder',
       '/listreminders', '/deletereminder', '/upcominglessons', '/feedback', 
-      '/reportbug', '/settings', '/stats', '/publish', '/addassignment', 
+      '/reportbug', '/settings', '/health', '/stats', '/publish', '/addassignment', 
       '/updateassignment', '/deleteassignment', '/deletecourse', '/addcourse', 
       '/updatecourse', '/export', '/viewfeedback', '/broadcast'
     ];
@@ -444,7 +446,8 @@ function registerCommands(bot) {
         `• \`/addreminder\` \\- إضافة تذكير مخصص\\n` +
         `• \`/submit\` \\- إرسال إجابة واجب\\n` +
         `• \`/feedback\` \\- إرسال تغذية راجعة\\n` +
-        `• \`/settings\` \\- إعدادات المستخدم\\n\\n` +
+        `• \`/settings\` \\- إعدادات المستخدم\\n` +
+        `• \`/health\` \\- حالة النظام\\n\\n` +
         `⚙️ *أوامر المدير:*\\n` +
         `• \`/stats\` \\- عرض الإحصائيات\\n` +
         `• \`/publish\` \\- نشر إعلان\\n` +
@@ -519,6 +522,12 @@ function registerCommands(bot) {
       { parse_mode: 'MarkdownV2' }
     );
   });
+
+  // Settings callback handlers
+  bot.action('toggle_reminders', handleToggleReminders);
+  bot.action('change_language', handleChangeLanguage);
+  bot.action('change_frequency', handleChangeFrequency);
+  bot.action('settings_help', handleSettingsHelp);
 
   console.log('✅ All bot commands and callbacks registered');
   logActivity('تم تسجيل جميع أوامر البوت والاستدعاءات');

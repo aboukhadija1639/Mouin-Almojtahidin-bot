@@ -19,11 +19,16 @@ export function ensureDataDirectoryExists() {
 export async function getAssignments() {
   try {
     const assignments = await db.all('SELECT * FROM assignments ORDER BY assignment_id DESC');
-    return assignments;
+    return { success: true, data: assignments };
   } catch (error) {
     console.error('خطأ في جلب الواجبات:', error);
-    return [];
+    return { success: false, data: [] };
   }
+}
+
+// addReminder function (alias for addCustomReminder for backward compatibility)
+export async function addReminder(userId, dateTime, message) {
+  return await addCustomReminder(userId, dateTime, message);
 }
 
 // Initialize database connection and create tables
@@ -83,7 +88,8 @@ async function createTables() {
         join_date DATETIME DEFAULT CURRENT_TIMESTAMP,
         is_verified BOOLEAN DEFAULT 0,
         reminders_enabled BOOLEAN DEFAULT 1,
-        language TEXT DEFAULT 'ar'
+        language TEXT DEFAULT 'ar',
+        notification_frequency TEXT DEFAULT 'daily'
       )
     `);
 
@@ -129,7 +135,8 @@ async function createTables() {
         title TEXT NOT NULL,
         question TEXT NOT NULL,
         correct_answer TEXT NOT NULL,
-        deadline TEXT
+        deadline TEXT,
+        due_date TEXT
       )
     `);
 
@@ -373,11 +380,11 @@ export async function deleteAssignment(assignmentId) {
     // Check if assignment was actually deleted
     if (result.changes === 0) {
       console.warn(`No assignment found with ID: ${assignmentId}`);
-      return false;
+      return { success: false };
     }
     
     console.log(`Successfully deleted assignment ${assignmentId} and its ${result.changes} submissions`);
-    return true;
+    return { success: true };
   } catch (error) {
     // Rollback transaction on error
     try {
@@ -386,7 +393,7 @@ export async function deleteAssignment(assignmentId) {
       console.error('خطأ في التراجع عن المعاملة:', rollbackError);
     }
     console.error('خطأ في حذف الواجب:', error);
-    return false;
+    return { success: false };
   }
 }
 
@@ -483,9 +490,21 @@ export async function getStats() {
       GROUP BY assign.assignment_id, assign.title
     `);
 
+    // Get additional statistics
+    const totalAssignments = await db.get('SELECT COUNT(*) as count FROM assignments');
+    const totalSubmissions = await db.get('SELECT COUNT(*) as count FROM submissions');
+    const lastAttendance = await db.get('SELECT MAX(attended_at) as last FROM attendance');
+    const lastAssignment = await db.get('SELECT MAX(assignment_id) as last FROM assignments');
+    const lastFeedback = await db.get('SELECT MAX(created_at) as last FROM feedback');
+
     return {
       totalUsers: totalUsers?.count || 0,
       verifiedUsers: verifiedUsers?.count || 0,
+      totalAssignments: totalAssignments?.count || 0,
+      totalSubmissions: totalSubmissions?.count || 0,
+      lastAttendance: lastAttendance?.last ? new Date(lastAttendance.last).toLocaleDateString('ar-SA') : null,
+      lastAssignment: lastAssignment?.last || null,
+      lastFeedback: lastFeedback?.last ? new Date(lastFeedback.last).toLocaleDateString('ar-SA') : null,
       attendanceByLesson: attendanceByLesson || [],
       submissionsByAssignment: submissionsByAssignment || []
     };
@@ -617,31 +636,7 @@ export async function updateCourse(courseId, field, value) {
   }
 }
 
-export async function deleteCourse(courseId) {
-  try {
-    // Check if course exists
-    const course = await db.get('SELECT course_id FROM courses WHERE course_id = ?', [courseId]);
-    if (!course) {
-      return { success: false, message: 'الكورس غير موجود' };
-    }
-    
-    // Delete related records first
-    await db.run('DELETE FROM lessons WHERE course_id = ?', [courseId]);
-    await db.run('DELETE FROM assignments WHERE course_id = ?', [courseId]);
-    
-    // Delete the course
-    const result = await db.run('DELETE FROM courses WHERE course_id = ?', [courseId]);
-    
-    if (result.changes > 0) {
-      return { success: true };
-    } else {
-      return { success: false, message: 'فشل في حذف الكورس' };
-    }
-  } catch (error) {
-    console.error('خطأ في حذف الكورس:', error);
-    return { success: false, message: 'خطأ في حذف الكورس' };
-  }
-}
+
 
 // Custom reminders functions
 export async function addCustomReminder(userId, dateTime, message) {
