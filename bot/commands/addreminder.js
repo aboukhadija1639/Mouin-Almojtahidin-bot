@@ -1,4 +1,4 @@
-import { addCustomReminder, getCustomReminders } from '../utils/database.js';
+import { addReminder, getCustomReminders } from '../utils/database.js';
 import { config } from '../../config.js';
 import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
 
@@ -100,7 +100,7 @@ export async function handleAddReminder(ctx) {
     }
 
     // Add reminder to database
-    const reminderId = await addCustomReminder(userId, dateTimeStr, message);
+    const reminderId = await addReminder(userId, dateTimeStr, message);
     
     if (reminderId) {
       const escapedDateTime = escapeMarkdownV2(dateTimeStr);

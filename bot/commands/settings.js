@@ -8,7 +8,7 @@ export async function handleSettings(ctx) {
     const messageText = ctx.message.text;
     const args = messageText.split(' ');
 
-    // إذا لم تُرسل إعدادات، عرض الإعداد الحالي
+    // If no settings provided, show current settings
     if (args.length < 2) {
       const settings = await getUserSettings(userId);
 
@@ -23,23 +23,42 @@ export async function handleSettings(ctx) {
 
       const remindersStatus = settings.reminders_enabled ? '✅ مفعلة' : '❌ معطلة';
       const languageStatus = settings.language === 'ar' ? '🇸🇦 العربية' : '🇺🇸 English';
+      const frequencyStatus = getFrequencyDisplay(settings.notification_frequency || 'daily');
+
+      const keyboard = {
+        inline_keyboard: [
+          [
+            { text: '🔔 تبديل التذكيرات', callback_data: 'toggle_reminders' },
+            { text: '🌐 تغيير اللغة', callback_data: 'change_language' }
+          ],
+          [
+            { text: '⏰ تكرار الإشعارات', callback_data: 'change_frequency' }
+          ],
+          [
+            { text: '📋 المساعدة', callback_data: 'settings_help' }
+          ]
+        ]
+      };
 
       await ctx.reply(
         `⚙️ ${bold('إعداداتك الحالية')}\n\n` +
         `━━━━━━━━━━━━━━━━━━━━\n\n` +
         `🔔 ${bold('التذكيرات:')} ${remindersStatus}\n` +
-        `🌐 ${bold('اللغة:')} ${languageStatus}\n\n` +
+        `🌐 ${bold('اللغة:')} ${languageStatus}\n` +
+        `⏰ ${bold('تكرار الإشعارات:')} ${frequencyStatus}\n\n` +
         `━━━━━━━━━━━━━━━━━━━━\n\n` +
-        `🛠️ ${bold('لتغيير الإعدادات:')}\n\n` +
-        `• ${code('/settings reminders on/off')} للتذكيرات\n` +
-        `• ${code('/settings language ar/en')} للغة\n\n` +
+        `🛠️ ${bold('اختر من الأزرار أدناه لتغيير الإعدادات:')}\n\n` +
         `💡 يمكنك إضافة تذكيرات خاصة باستخدام ${code('/addreminder')}\n\n` +
         `📞 للمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}`,
-        { parse_mode: 'MarkdownV2' }
+        { 
+          parse_mode: 'MarkdownV2',
+          reply_markup: keyboard
+        }
       );
       return;
     }
 
+    // Handle command-line settings
     const settingType = args[1]?.toLowerCase();
     const settingValue = args[2]?.toLowerCase();
 
@@ -110,15 +129,51 @@ export async function handleSettings(ctx) {
       return;
     }
 
-    // إعداد غير معروف
+    if (settingType === 'frequency') {
+      if (!['daily', 'weekly', 'off'].includes(settingValue)) {
+        await ctx.reply(
+          `❌ ${bold('قيمة غير صحيحة')}\n\n` +
+          `📝 ${bold('الاستخدام الصحيح:')}\n` +
+          `• ${code('/settings frequency daily')} يومياً\n` +
+          `• ${code('/settings frequency weekly')} أسبوعياً\n` +
+          `• ${code('/settings frequency off')} إيقاف`,
+          { parse_mode: 'MarkdownV2' }
+        );
+        return;
+      }
+
+      const success = await updateUserSettings(userId, { notification_frequency: settingValue });
+
+      if (success) {
+        const frequencyName = getFrequencyDisplay(settingValue);
+        await ctx.reply(
+          `✅ ${bold('تم تحديث إعداداتك بنجاح')}\n\n` +
+          `⏰ تم تغيير تكرار الإشعارات إلى: ${frequencyName}\n\n` +
+          `📝 يمكنك عرض إعداداتك باستخدام ${code('/settings')}`,
+          { parse_mode: 'MarkdownV2' }
+        );
+      } else {
+        await ctx.reply(
+          `❌ ${bold('حدث خطأ أثناء تحديث الإعدادات')}\n\n` +
+          `يرجى المحاولة لاحقًا أو التواصل مع الدعم: ${escapeMarkdownV2(config.admin.supportChannel)}`,
+          { parse_mode: 'MarkdownV2' }
+        );
+      }
+
+      return;
+    }
+
+    // Unknown setting
     await ctx.reply(
       `❌ ${bold('نوع الإعداد غير معروف')}\n\n` +
       `📝 ${bold('الإعدادات المدعومة:')}\n` +
       `• ${code('reminders')} \\- تفعيل/إيقاف التذكيرات\n` +
-      `• ${code('language')} \\- تغيير اللغة\n\n` +
+      `• ${code('language')} \\- تغيير اللغة\n` +
+      `• ${code('frequency')} \\- تكرار الإشعارات\n\n` +
       `💡 ${bold('أمثلة:')}\n` +
       `• ${code('/settings reminders on/off')}\n` +
-      `• ${code('/settings language ar/en')}\n\n` +
+      `• ${code('/settings language ar/en')}\n` +
+      `• ${code('/settings frequency daily/weekly/off')}\n\n` +
       `📞 للمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}`,
       { parse_mode: 'MarkdownV2' }
     );
@@ -131,4 +186,120 @@ export async function handleSettings(ctx) {
       { parse_mode: 'MarkdownV2' }
     );
   }
+}
+
+// Callback query handlers
+export async function handleToggleReminders(ctx) {
+  try {
+    const userId = ctx.from.id;
+    const settings = await getUserSettings(userId);
+    const newValue = !settings.reminders_enabled;
+    
+    const success = await updateUserSettings(userId, { reminders_enabled: newValue });
+    
+    if (success) {
+      const status = newValue ? '✅ تم تفعيل التذكيرات' : '🔕 تم إيقاف التذكيرات';
+      await ctx.answerCbQuery(status);
+      
+      // Update the message with new settings
+      await handleSettings(ctx);
+    } else {
+      await ctx.answerCbQuery('❌ فشل في تحديث الإعدادات');
+    }
+  } catch (error) {
+    console.error('خطأ في تبديل التذكيرات:', error);
+    await ctx.answerCbQuery('❌ حدث خطأ');
+  }
+}
+
+export async function handleChangeLanguage(ctx) {
+  try {
+    const userId = ctx.from.id;
+    const settings = await getUserSettings(userId);
+    const newLanguage = settings.language === 'ar' ? 'en' : 'ar';
+    
+    const success = await updateUserLanguage(userId, newLanguage);
+    
+    if (success) {
+      const languageName = newLanguage === 'ar' ? '🇸🇦 العربية' : '🇺🇸 English';
+      await ctx.answerCbQuery(`✅ تم تغيير اللغة إلى: ${languageName}`);
+      
+      // Update the message with new settings
+      await handleSettings(ctx);
+    } else {
+      await ctx.answerCbQuery('❌ فشل في تحديث اللغة');
+    }
+  } catch (error) {
+    console.error('خطأ في تغيير اللغة:', error);
+    await ctx.answerCbQuery('❌ حدث خطأ');
+  }
+}
+
+export async function handleChangeFrequency(ctx) {
+  try {
+    const userId = ctx.from.id;
+    const settings = await getUserSettings(userId);
+    const currentFreq = settings.notification_frequency || 'daily';
+    
+    // Cycle through frequencies: daily -> weekly -> off -> daily
+    const frequencies = ['daily', 'weekly', 'off'];
+    const currentIndex = frequencies.indexOf(currentFreq);
+    const newIndex = (currentIndex + 1) % frequencies.length;
+    const newFrequency = frequencies[newIndex];
+    
+    const success = await updateUserSettings(userId, { notification_frequency: newFrequency });
+    
+    if (success) {
+      const frequencyName = getFrequencyDisplay(newFrequency);
+      await ctx.answerCbQuery(`✅ تم تغيير التكرار إلى: ${frequencyName}`);
+      
+      // Update the message with new settings
+      await handleSettings(ctx);
+    } else {
+      await ctx.answerCbQuery('❌ فشل في تحديث التكرار');
+    }
+  } catch (error) {
+    console.error('خطأ في تغيير التكرار:', error);
+    await ctx.answerCbQuery('❌ حدث خطأ');
+  }
+}
+
+export async function handleSettingsHelp(ctx) {
+  try {
+    await ctx.answerCbQuery('📋 عرض المساعدة');
+    
+    await ctx.reply(
+      `📋 ${bold('دليل إعدادات البوت')}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `🔔 ${bold('التذكيرات:')}\n` +
+      `• تفعيل/إيقاف التذكيرات التلقائية\n` +
+      `• لا تؤثر على التذكيرات المخصصة\n\n` +
+      `🌐 ${bold('اللغة:')}\n` +
+      `• تغيير لغة واجهة البوت\n` +
+      `• العربية أو الإنجليزية\n\n` +
+      `⏰ ${bold('تكرار الإشعارات:')}\n` +
+      `• يومياً: إشعارات يومية\n` +
+      `• أسبوعياً: إشعارات أسبوعية\n` +
+      `• إيقاف: بدون إشعارات\n\n` +
+      `💡 ${bold('نصائح:')}\n` +
+      `• استخدم ${code('/addreminder')} لإضافة تذكيرات خاصة\n` +
+      `• يمكنك تغيير الإعدادات في أي وقت\n` +
+      `• الإعدادات تُحفظ تلقائياً\n\n` +
+      `📞 للمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}`,
+      { parse_mode: 'MarkdownV2' }
+    );
+  } catch (error) {
+    console.error('خطأ في عرض المساعدة:', error);
+    await ctx.answerCbQuery('❌ حدث خطأ');
+  }
+}
+
+// Helper function to get frequency display text
+function getFrequencyDisplay(frequency) {
+  const displays = {
+    daily: '📅 يومياً',
+    weekly: '📆 أسبوعياً',
+    off: '🔕 إيقاف'
+  };
+  return displays[frequency] || displays.daily;
 }

@@ -2,6 +2,7 @@
 import { isUserAdmin, addCourse, updateCourse, deleteCourse } from '../utils/database.js';
 import { config } from '../../config.js';
 import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
+import { validateDate } from '../utils/security.js';
 
 export function setupCourseAdmin(bot) {
   bot.command('addcourse', async (ctx) => {

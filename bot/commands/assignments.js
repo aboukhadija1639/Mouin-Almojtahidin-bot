@@ -4,18 +4,19 @@ import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
 
 export async function handleAssignments(ctx) {
   try {
-    const assignments = await getAssignments();
-    if (!assignments || assignments.length === 0) {
+    const result = await getAssignments();
+    if (!result.success || !result.data || result.data.length === 0) {
       await ctx.reply(
         `📝 *${escapeMarkdownV2('قائمة الواجبات')}*\n━━━━━━━━━━━━━━━━━━━━\n${escapeMarkdownV2('لا توجد واجبات حالياً.')}\n💡 ${escapeMarkdownV2('للمساعدة:')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
         { parse_mode: 'MarkdownV2' }
       );
       return;
     }
+    const assignments = result.data;
     const now = new Date();
     let active = [], past = [];
     assignments.forEach(assignment => {
-      const deadline = new Date(assignment.deadline);
+      const deadline = new Date(assignment.deadline || assignment.due_date);
       const formattedDeadline = deadline.toLocaleDateString('ar-SA') + ' - ' + deadline.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
       const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
       const status = deadline > now ? `⏳ ${escapeMarkdownV2('المتبقي:')} ${daysLeft} ${escapeMarkdownV2('أيام')}` : '⏰ ' + escapeMarkdownV2('انتهى');

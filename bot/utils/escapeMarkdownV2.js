@@ -36,7 +36,8 @@ export function escapeMarkdownV2(text) {
     { char: '{', regex: /\{/g },
     { char: '}', regex: /\}/g },
     { char: '.', regex: /\./g },
-    { char: '!', regex: /!/g }
+    { char: '!', regex: /!/g },
+    { char: '@', regex: /@/g }
   ];
   
   let escaped = text;
