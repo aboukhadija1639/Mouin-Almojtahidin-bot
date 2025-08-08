@@ -1,15 +1,17 @@
 // bot/commands/start.js
 import { addUser, isUserVerified } from '../utils/database.js';
+import { userCacheUtil, warmCache } from '../utils/cache.js';
 import { config } from '../../config.js';
 import { escapeMarkdownV2, bold, italic, code } from '../utils/escapeMarkdownV2.js';
 import { Markup } from 'telegraf';
 
 export async function handleStart(ctx) {
+  const startTime = Date.now();
   console.log('[START] Command invoked', { user: ctx.from, timestamp: new Date().toISOString() });
 
   try {
     const user = ctx.from;
-    if (!user || !user.id) {
+    if (!user?.id) {
       console.error('[START] Error: ctx.from is undefined or missing id', { ctxFrom: ctx.from });
       throw new Error('User information unavailable');
     }
@@ -19,114 +21,140 @@ export async function handleStart(ctx) {
     const firstName = user.first_name || 'مستخدم';
     console.log('[START] User info', { userId, username, firstName });
 
-    // Add user to database
-    console.log('[START] Adding user to database');
-    await addUser(userId, username, firstName);
-    console.log('[START] User added successfully');
+    // Check cache first for user verification status
+    let userData = userCacheUtil.get(userId);
+    let verified = false;
 
-    // Check if user is already verified
-    console.log('[START] Checking user verification');
-    const userData = await isUserVerified(userId);
-    const verified = userData?.verified || false;
-    console.log('[START] Verification status', { verified });
+    if (userData) {
+      verified = userData.verified || false;
+      console.log('[START] User data from cache', { verified });
+    } else {
+      console.log('[START] User data not in cache, fetching from database');
+      
+      // Add user to database (this will be quick if user exists)
+      await addUser(userId, username, firstName);
+      
+      // Check verification status
+      const userVerificationData = await isUserVerified(userId);
+      verified = userVerificationData?.verified || false;
+      
+      // Cache the user data for future requests
+      userData = { 
+        id: userId, 
+        username, 
+        firstName, 
+        verified,
+        lastUpdated: Date.now()
+      };
+      userCacheUtil.set(userId, userData, 300); // Cache for 5 minutes
+      
+      console.log('[START] User data cached', { verified });
+    }
+
+    // Pre-warm cache with user courses and assignments if verified
+    if (verified) {
+      // Don't await these to avoid blocking the response
+      warmCache.preloadUserData(userId, { isUserVerified }).catch(console.error);
+    }
 
     // Build response message with professional formatting
-    let message = `🤝 ${bold('مرحبًا بك في بوت معين المجتهدين')}\n\n`;
-    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    const responseMessage = buildStartMessage(firstName, verified);
+    const keyboard = createStartKeyboard(verified);
 
-    if (verified) {
-      message += `✅ ${bold('حسابك مفعل بالفعل!')}\n\n`;
-      message += `يمكنك الآن استخدام جميع ميزات البوت:\n\n`;
-    } else {
-      message += `🔒 ${bold('حسابك غير مفعل حاليًا')}\n\n`;
-      message += `لتفعيل حسابك واستخدام جميع الميزات، استخدم:\n\n`;
-      message += `${code('/verify كود_التفعيل')}\n\n`;
-      message += `💡 للحصول على الكود، تواصل مع: ${escapeMarkdownV2(config.admin.supportChannel)}\n\n`;
-    }
-
-    message += `📚 ${bold('الميزات المتاحة:')}\n\n`;
-    message += `• 📋 ${code('/profile')} \\- عرض ملفك الشخصي\n`;
-    message += `• 📅 ${code('/attendance')} \\- تسجيل الحضور\n`;
-    message += `• ❓ ${code('/faq')} \\- الأسئلة الشائعة\n`;
-    message += `• 📝 ${code('/submit')} \\- إرسال إجابة واجب\n`;
-    
-    if (verified) {
-      message += `• ⏰ ${code('/addreminder')} \\- إضافة تذكير شخصي\n`;
-      message += `• 📋 ${code('/listreminders')} \\- عرض التذكيرات\n`;
-      message += `• 🗑️ ${code('/deletereminder')} \\- حذف تذكير\n`;
-    }
-    
-    message += `\n📞 للدعم والمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}\n\n`;
-    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-    message += `🤖 ${italic('بوت معين المجتهدين')}`;
-
-    // Create inline keyboard based on verification status
-    let keyboard;
-    if (verified) {
-      keyboard = Markup.inlineKeyboard([
-        [
-          Markup.button.callback('📋 ملفي الشخصي', 'profile'),
-          Markup.button.callback('📚 الدروس', 'courses')
-        ],
-        [
-          Markup.button.callback('📝 الواجبات', 'assignments'),
-          Markup.button.callback('⏰ التذكيرات', 'reminders')
-        ],
-        [
-          Markup.button.callback('❓ الأسئلة الشائعة', 'faq'),
-          Markup.button.callback('🆘 المساعدة', 'help')
-        ],
-        [
-          Markup.button.callback('⚙️ الإعدادات', 'settings')
-        ]
-      ]);
-    } else {
-      keyboard = Markup.inlineKeyboard([
-        [
-          Markup.button.callback('🔑 تفعيل الحساب', 'verify_account'),
-          Markup.button.callback('❓ الأسئلة الشائعة', 'faq')
-        ],
-        [
-          Markup.button.callback('🆘 المساعدة', 'help'),
-          Markup.button.callback('📞 الدعم', 'support')
-        ]
-      ]);
-    }
-
-    console.log('[START] Sending response');
-    await ctx.reply(message, {
+    // Send response
+    await ctx.reply(responseMessage, {
       parse_mode: 'MarkdownV2',
       disable_web_page_preview: true,
-      ...keyboard
+      reply_markup: keyboard.reply_markup
     });
-    console.log('[START] Response sent successfully');
+
+    const duration = Date.now() - startTime;
+    console.log(`[START] Command completed in ${duration}ms`, { userId, verified });
+
   } catch (error) {
-    console.error('[START] Error in handleStart:', {
-      error: error.message,
+    console.error('[START] Error handling start command:', {
+      message: error.message,
       stack: error.stack,
-      user: ctx.from,
-      timestamp: new Date().toISOString(),
+      user: ctx.from
     });
 
-    // Log error to file
-    try {
-      const fs = await import('fs');
-      fs.appendFileSync(
-        './data/error.log',
-        `[START] ${new Date().toISOString()}\n${error.stack || error}\n`
-      );
-      console.log('[START] Error logged to file');
-    } catch (fileError) {
-      console.error('[START] Error logging to file:', {
-        error: fileError.message,
-        stack: fileError.stack,
-      });
-    }
-
+    // Send error message to user
     await ctx.reply(
-      `❌ ${escapeMarkdownV2('حدث خطأ، حاول مرة أخرى أو تواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
+      `❌ **حدث خطأ**\n\n` +
+      `عذراً، حدث خطأ أثناء بدء تشغيل البوت\\.\n` +
+      `يرجى المحاولة مرة أخرى أو التواصل مع الدعم الفني\\.\n\n` +
+      `💬 **الدعم:** ${escapeMarkdownV2(config.admin?.supportChannel || '@support')}`,
       { parse_mode: 'MarkdownV2' }
     );
-    console.log('[START] Error response sent to user');
   }
+}
+
+// Helper function to build the start message
+function buildStartMessage(firstName, verified) {
+  let message = `🤝 ${bold('مرحبًا بك في بوت معين المجتهدين')}\n\n`;
+  message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+  if (verified) {
+    message += `✅ ${bold('حسابك مفعل بالفعل!')}\n\n`;
+    message += `مرحباً ${escapeMarkdownV2(firstName)}، يمكنك الآن استخدام جميع ميزات البوت:\n\n`;
+  } else {
+    message += `🔒 ${bold('حسابك غير مفعل حاليًا')}\n\n`;
+    message += `أهلاً ${escapeMarkdownV2(firstName)}! لتفعيل حسابك واستخدام جميع الميزات، استخدم:\n\n`;
+    message += `${code('/verify كود_التفعيل')}\n\n`;
+    message += `💡 للحصول على الكود، تواصل مع: ${escapeMarkdownV2(config.admin.supportChannel)}\n\n`;
+  }
+
+  message += `📚 ${bold('الميزات المتاحة:')}\n\n`;
+  
+  if (verified) {
+    message += `• 📋 ${code('/profile')} \\- عرض ملفك الشخصي\n`;
+    message += `• 📅 ${code('/attendance')} \\- تسجيل الحضور\n`;
+    message += `• 📚 ${code('/courses')} \\- عرض الدروس\n`;
+    message += `• 📝 ${code('/assignments')} \\- عرض الواجبات\n`;
+    message += `• ⏰ ${code('/reminders')} \\- إدارة التذكيرات\n`;
+    message += `• ⚙️ ${code('/settings')} \\- الإعدادات\n`;
+  } else {
+    message += `• 🔑 ${code('/verify')} \\- تفعيل الحساب\n`;
+  }
+  
+  message += `• ❓ ${code('/faq')} \\- الأسئلة الشائعة\n`;
+  message += `• 🆘 ${code('/help')} \\- المساعدة\n\n`;
+  
+  message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+  message += `💬 ${bold('للدعم:')} ${escapeMarkdownV2(config.admin.supportChannel)}\n`;
+  message += `🌐 ${bold('الموقع:')} ${escapeMarkdownV2(config.admin.website || 'قريباً')}`;
+
+  return message;
+}
+
+// Helper function to create the start keyboard
+function createStartKeyboard(verified) {
+  const buttons = [];
+  
+  if (verified) {
+    buttons.push(
+      [
+        Markup.button.callback('📚 الدروس', 'courses'),
+        Markup.button.callback('📝 الواجبات', 'assignments')
+      ],
+      [
+        Markup.button.callback('📋 الملف الشخصي', 'profile'),
+        Markup.button.callback('⏰ التذكيرات', 'reminders')
+      ]
+    );
+  } else {
+    buttons.push(
+      [Markup.button.callback('🔑 تفعيل الحساب', 'verify_account')]
+    );
+  }
+  
+  buttons.push(
+    [
+      Markup.button.callback('❓ أسئلة شائعة', 'faq'),
+      Markup.button.callback('🆘 مساعدة', 'help')
+    ],
+    [Markup.button.callback('📞 الدعم', 'support')]
+  );
+
+  return Markup.inlineKeyboard(buttons);
 }

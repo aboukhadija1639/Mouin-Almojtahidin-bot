@@ -1,39 +1,56 @@
 import { getLessons } from '../utils/database.js';
+import { courseCacheUtil } from '../utils/cache.js';
 import { config } from '../../config.js';
-import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
+import { escapeMarkdownV2, bold, italic, code } from '../utils/escapeMarkdownV2.js';
 
 export async function handleCourses(ctx) {
+  const startTime = Date.now();
+  console.log('[COURSES] Command invoked', { user: ctx.from?.id, timestamp: new Date().toISOString() });
+
   try {
-    // Get all lessons from database and config
-    const lessonsResult = await getLessons();
-    const dbLessons = lessonsResult.success ? lessonsResult.data : [];
-    const configLessons = config.schedule.lessons;
+    // Check cache first
+    let allLessons = courseCacheUtil.getAll();
     
-    // Combine lessons (database takes priority)
-    const allLessons = [...dbLessons];
-    
-    // Add config lessons if not already in database
-    configLessons.forEach(configLesson => {
-      const exists = dbLessons.some(dbLesson => 
-        dbLesson.title === configLesson.title && 
-        dbLesson.date === configLesson.date
-      );
-      if (!exists) {
-        allLessons.push({
-          lesson_id: configLesson.course_id,
-          title: configLesson.title,
-          date: configLesson.date,
-          time: configLesson.time,
-          zoom_link: configLesson.zoom_link
-        });
-      }
-    });
+    if (!allLessons) {
+      console.log('[COURSES] Lessons not in cache, fetching from database');
+      
+      // Get all lessons from database and config
+      const lessonsResult = await getLessons();
+      const dbLessons = lessonsResult.success ? lessonsResult.data : [];
+      const configLessons = config.schedule?.lessons || [];
+      
+      // Combine lessons (database takes priority)
+      allLessons = [...dbLessons];
+      
+      // Add config lessons if not already in database
+      configLessons.forEach(configLesson => {
+        const exists = dbLessons.some(dbLesson => 
+          dbLesson.title === configLesson.title && 
+          dbLesson.date === configLesson.date
+        );
+        if (!exists) {
+          allLessons.push({
+            lesson_id: configLesson.course_id,
+            title: configLesson.title,
+            date: configLesson.date,
+            time: configLesson.time,
+            zoom_link: configLesson.zoom_link
+          });
+        }
+      });
+
+      // Cache the combined lessons for 10 minutes
+      courseCacheUtil.setAll(allLessons, 600);
+      console.log(`[COURSES] Cached ${allLessons.length} lessons`);
+    } else {
+      console.log(`[COURSES] Using cached lessons: ${allLessons.length} items`);
+    }
 
     if (allLessons.length === 0) {
       await ctx.reply(
-        `📚 *${escapeMarkdownV2('قائمة الدروس')}*\n\n` +
-        `${escapeMarkdownV2('لا توجد دروس مجدولة حالياً.')}\n` +
-        `💡 ${escapeMarkdownV2('للمساعدة:')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
+        `📚 ${bold('قائمة الدروس')}\n\n` +
+        `${escapeMarkdownV2('لا توجد دروس مجدولة حالياً.')}\n\n` +
+        `💡 ${bold('للمساعدة:')} ${escapeMarkdownV2(config.admin?.supportChannel || '@support')}`,
         { 
           parse_mode: 'MarkdownV2',
           disable_web_page_preview: true 
@@ -42,65 +59,119 @@ export async function handleCourses(ctx) {
       return;
     }
 
-    // Sort lessons by date and time
+    // Sort lessons by date and time (more efficient sorting)
     allLessons.sort((a, b) => {
-      const dateA = new Date(`${a.date} ${a.time}`);
-      const dateB = new Date(`${b.date} ${b.time}`);
-      return dateA - dateB;
+      // Create comparable date strings
+      const dateTimeA = `${a.date} ${a.time}`;
+      const dateTimeB = `${b.date} ${b.time}`;
+      return dateTimeA.localeCompare(dateTimeB);
     });
 
-    // Build courses message
-    let message = `📚 *${escapeMarkdownV2('قائمة الدروس المجدولة')}*\n\n`;
-    
-    let upcomingLessons = [];
-    let pastLessons = [];
-    const now = new Date();
+    // Build the response message
+    const responseMessage = buildCoursesMessage(allLessons);
 
-    allLessons.forEach((lesson, index) => {
-      const lessonDate = new Date(`${lesson.date} ${lesson.time}`);
-      const formattedDate = new Date(lesson.date).toLocaleDateString('ar-SA');
-      const formattedTime = lesson.time;
-      
-      const lessonInfo = `${index + 1}\\. *${escapeMarkdownV2(lesson.title)}*\n` +
-        `   📅 ${escapeMarkdownV2('التاريخ:')} ${escapeMarkdownV2(formattedDate)}\n` +
-        `   ⏰ ${escapeMarkdownV2('الوقت:')} ${escapeMarkdownV2(formattedTime)}\n`;
-        
-      if (lessonDate > now) {
-        upcomingLessons.push(lessonInfo);
-      } else {
-        pastLessons.push(lessonInfo);
-      }
-    });
-
-    // Add upcoming lessons
-    if (upcomingLessons.length > 0) {
-      message += `🔮 *${escapeMarkdownV2('الدروس القادمة:')}*\n\n`;
-      message += upcomingLessons.join('\n');
-      message += `\n`;
-    }
-
-    // Add past lessons
-    if (pastLessons.length > 0) {
-      message += `📋 *${escapeMarkdownV2('الدروس السابقة:')}*\n\n`;
-      message += pastLessons.join('\n');
-      message += `\n`;
-    }
-
-    message += `${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━')}\n\n`;
-    message += `📊 ${escapeMarkdownV2('إجمالي الدروس:')} ${allLessons.length}\n`;
-    message += `🔔 ${escapeMarkdownV2('استخدم /attendance لتسجيل حضورك بعد الدرس')}\n\n`;
-    message += `💡 ${escapeMarkdownV2('للمساعدة:')} ${escapeMarkdownV2(config.admin.supportChannel)}`;
-
-    await ctx.reply(message, { 
+    await ctx.reply(responseMessage, {
       parse_mode: 'MarkdownV2',
-      disable_web_page_preview: true 
+      disable_web_page_preview: true
+    });
+
+    const duration = Date.now() - startTime;
+    console.log(`[COURSES] Command completed in ${duration}ms`, { 
+      lessonsCount: allLessons.length,
+      userId: ctx.from?.id 
     });
 
   } catch (error) {
-    console.error('خطأ في أمر /courses:', error);
+    console.error('[COURSES] Error handling courses command:', {
+      message: error.message,
+      stack: error.stack,
+      user: ctx.from?.id
+    });
+
     await ctx.reply(
-      `❌ ${escapeMarkdownV2('حدث خطأ، حاول مرة أخرى أو تواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
+      `❌ ${bold('حدث خطأ في تحميل الدروس')}\n\n` +
+      `${escapeMarkdownV2('عذراً، حدث خطأ أثناء جلب قائمة الدروس.')}\n` +
+      `${escapeMarkdownV2('يرجى المحاولة مرة أخرى أو التواصل مع الدعم الفني.')}\n\n` +
+      `💬 ${bold('الدعم:')} ${escapeMarkdownV2(config.admin?.supportChannel || '@support')}`,
       { parse_mode: 'MarkdownV2' }
     );
   }
+}
+
+// Helper function to build the courses message
+function buildCoursesMessage(lessons) {
+  let message = `📚 ${bold('قائمة الدروس المجدولة')}\n\n`;
+  message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+  
+  let upcomingLessons = [];
+  let pastLessons = [];
+
+  // Categorize lessons
+  lessons.forEach(lesson => {
+    const lessonDate = new Date(`${lesson.date} ${lesson.time || '00:00'}`);
+    if (lessonDate >= now || lesson.date === today) {
+      upcomingLessons.push(lesson);
+    } else {
+      pastLessons.push(lesson);
+    }
+  });
+
+  // Show upcoming lessons first
+  if (upcomingLessons.length > 0) {
+    message += `🟢 ${bold('الدروس القادمة:')}\n\n`;
+    
+    upcomingLessons.slice(0, 5).forEach((lesson, index) => { // Limit to 5 upcoming lessons
+      message += formatLessonEntry(lesson, index + 1, true);
+    });
+
+    if (upcomingLessons.length > 5) {
+      message += `\n${italic(`... و ${upcomingLessons.length - 5} دروس أخرى`)}\n`;
+    }
+  }
+
+  // Show recent past lessons
+  if (pastLessons.length > 0) {
+    message += `\n🔘 ${bold('الدروس السابقة:')}\n\n`;
+    
+    // Show last 3 past lessons
+    pastLessons.slice(-3).forEach((lesson, index) => {
+      message += formatLessonEntry(lesson, index + 1, false);
+    });
+
+    if (pastLessons.length > 3) {
+      message += `\n${italic(`... و ${pastLessons.length - 3} دروس أخرى`)}\n`;
+    }
+  }
+
+  message += `\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+  message += `📊 ${bold('الإحصائيات:')}\n`;
+  message += `• المجموع: ${lessons.length} درس\n`;
+  message += `• القادمة: ${upcomingLessons.length} درس\n`;
+  message += `• المكتملة: ${pastLessons.length} درس\n\n`;
+  
+  message += `💡 ${italic('لعرض تفاصيل أكثر، استخدم')} ${code('/upcominglessons')}`;
+
+  return message;
+}
+
+// Helper function to format individual lesson entries
+function formatLessonEntry(lesson, index, isUpcoming) {
+  const statusIcon = isUpcoming ? '🟢' : '🔘';
+  const title = escapeMarkdownV2(lesson.title || 'درس بدون عنوان');
+  const date = escapeMarkdownV2(lesson.date || 'تاريخ غير محدد');
+  const time = escapeMarkdownV2(lesson.time || 'وقت غير محدد');
+  
+  let entry = `${statusIcon} ${bold(title)}\n`;
+  entry += `   📅 ${date} | ⏰ ${time}\n`;
+  
+  if (lesson.zoom_link && isUpcoming) {
+    entry += `   🔗 ${escapeMarkdownV2('رابط الدرس متوفر')}\n`;
+  }
+  
+  entry += `\n`;
+  
+  return entry;
 }

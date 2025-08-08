@@ -3,9 +3,48 @@ import { open } from 'sqlite';
 import * as fs from 'fs';
 import { config } from '../../config.js';
 import { promisify } from 'util';
+import { userCacheUtil, courseCacheUtil, assignmentCacheUtil, statsCacheUtil } from './cache.js';
 
 
 let db = null;
+
+// Database operation performance tracking
+const dbStats = {
+  queries: 0,
+  cacheHits: 0,
+  cacheMisses: 0,
+  totalTime: 0,
+  slowQueries: []
+};
+
+// Helper function to track performance
+function trackQuery(queryName, startTime, fromCache = false) {
+  const duration = Date.now() - startTime;
+  dbStats.queries++;
+  dbStats.totalTime += duration;
+  
+  if (fromCache) {
+    dbStats.cacheHits++;
+  } else {
+    dbStats.cacheMisses++;
+  }
+  
+  // Track slow queries (>100ms)
+  if (duration > 100) {
+    dbStats.slowQueries.push({
+      name: queryName,
+      duration,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Keep only last 10 slow queries
+    if (dbStats.slowQueries.length > 10) {
+      dbStats.slowQueries.shift();
+    }
+  }
+  
+  console.log(`[DB] ${queryName}: ${duration}ms ${fromCache ? '(cached)' : '(db)'}`);
+}
 
 // Ensure data directory exists
 export function ensureDataDirectoryExists() {
@@ -13,6 +52,276 @@ export function ensureDataDirectoryExists() {
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
   }
+}
+
+// Enhanced getUserInfo with caching
+export async function getUserInfo(userId) {
+  const startTime = Date.now();
+  
+  try {
+    // Check cache first
+    const cachedUser = userCacheUtil.get(userId);
+    if (cachedUser) {
+      trackQuery('getUserInfo', startTime, true);
+      return { success: true, data: cachedUser };
+    }
+    
+    // If not in cache, query database
+    const user = await db.get('SELECT * FROM users WHERE user_id = ?', [userId]);
+    
+    if (user) {
+      // Cache the result
+      userCacheUtil.set(userId, user, 300); // 5 minutes
+      trackQuery('getUserInfo', startTime, false);
+      return { success: true, data: user };
+    } else {
+      trackQuery('getUserInfo', startTime, false);
+      return { success: false, data: null };
+    }
+  } catch (error) {
+    console.error('خطأ في جلب معلومات المستخدم:', error);
+    trackQuery('getUserInfo', startTime, false);
+    return { success: false, data: null };
+  }
+}
+
+// Enhanced isUserVerified with caching
+export async function isUserVerified(userId) {
+  const startTime = Date.now();
+  
+  try {
+    // Check cache first
+    const cachedUser = userCacheUtil.get(userId);
+    if (cachedUser) {
+      trackQuery('isUserVerified', startTime, true);
+      return { verified: cachedUser.verified || false };
+    }
+    
+    // Query database
+    const user = await db.get('SELECT verified FROM users WHERE user_id = ?', [userId]);
+    
+    if (user) {
+      // Cache minimal user data
+      const userData = { id: userId, verified: user.verified };
+      userCacheUtil.set(userId, userData, 300);
+      trackQuery('isUserVerified', startTime, false);
+      return { verified: user.verified || false };
+    } else {
+      trackQuery('isUserVerified', startTime, false);
+      return { verified: false };
+    }
+  } catch (error) {
+    console.error('خطأ في فحص تفعيل المستخدم:', error);
+    trackQuery('isUserVerified', startTime, false);
+    return { verified: false };
+  }
+}
+
+// Enhanced getCourses with caching
+export async function getCourses() {
+  const startTime = Date.now();
+  
+  try {
+    // Check cache first
+    const cachedCourses = courseCacheUtil.getAll();
+    if (cachedCourses) {
+      trackQuery('getCourses', startTime, true);
+      return { success: true, data: cachedCourses };
+    }
+    
+    // Query database
+    const courses = await db.all('SELECT * FROM courses ORDER BY course_id');
+    
+    // Cache the results
+    courseCacheUtil.setAll(courses, 600); // 10 minutes
+    trackQuery('getCourses', startTime, false);
+    return { success: true, data: courses };
+  } catch (error) {
+    console.error('خطأ في جلب الكورسات:', error);
+    trackQuery('getCourses', startTime, false);
+    return { success: false, data: [] };
+  }
+}
+
+// Enhanced getAssignments with caching
+export async function getAssignments() {
+  const startTime = Date.now();
+  
+  try {
+    // Check cache first
+    const cachedAssignments = assignmentCacheUtil.getAll();
+    if (cachedAssignments) {
+      trackQuery('getAssignments', startTime, true);
+      return { success: true, data: cachedAssignments };
+    }
+    
+    // Query database
+    const assignments = await db.all('SELECT * FROM assignments ORDER BY assignment_id DESC');
+    
+    // Cache the results
+    assignmentCacheUtil.setAll(assignments, 300); // 5 minutes
+    trackQuery('getAssignments', startTime, false);
+    return { success: true, data: assignments };
+  } catch (error) {
+    console.error('خطأ في جلب الواجبات:', error);
+    trackQuery('getAssignments', startTime, false);
+    return { success: false, data: [] };
+  }
+}
+
+// Batch user operations for better performance
+export async function getUsersBatch(userIds) {
+  const startTime = Date.now();
+  
+  try {
+    // Check cache for each user
+    const cachedUsers = [];
+    const uncachedUserIds = [];
+    
+    userIds.forEach(userId => {
+      const cached = userCacheUtil.get(userId);
+      if (cached) {
+        cachedUsers.push(cached);
+      } else {
+        uncachedUserIds.push(userId);
+      }
+    });
+    
+    // Query database for uncached users
+    let dbUsers = [];
+    if (uncachedUserIds.length > 0) {
+      const placeholders = uncachedUserIds.map(() => '?').join(',');
+      dbUsers = await db.all(
+        `SELECT * FROM users WHERE user_id IN (${placeholders})`,
+        uncachedUserIds
+      );
+      
+      // Cache the database results
+      dbUsers.forEach(user => {
+        userCacheUtil.set(user.user_id, user, 300);
+      });
+    }
+    
+    const allUsers = [...cachedUsers, ...dbUsers];
+    trackQuery('getUsersBatch', startTime, cachedUsers.length > 0);
+    return { success: true, data: allUsers };
+  } catch (error) {
+    console.error('خطأ في جلب المستخدمين بشكل مجمع:', error);
+    trackQuery('getUsersBatch', startTime, false);
+    return { success: false, data: [] };
+  }
+}
+
+// Enhanced addUser with cache invalidation
+export async function addUser(userId, username, firstName) {
+  const startTime = Date.now();
+  
+  try {
+    await db.run(
+      'INSERT OR REPLACE INTO users (user_id, username, first_name, join_date) VALUES (?, ?, ?, datetime("now"))',
+      [userId, username, firstName]
+    );
+    
+    // Invalidate user cache since data changed
+    userCacheUtil.del(userId);
+    
+    trackQuery('addUser', startTime, false);
+    return { success: true };
+  } catch (error) {
+    console.error('خطأ في إضافة المستخدم:', error);
+    trackQuery('addUser', startTime, false);
+    return { success: false };
+  }
+}
+
+// Enhanced updateUserVerification with cache invalidation
+export async function updateUserVerification(userId, verified) {
+  const startTime = Date.now();
+  
+  try {
+    await db.run(
+      'UPDATE users SET verified = ? WHERE user_id = ?',
+      [verified, userId]
+    );
+    
+    // Invalidate user cache
+    userCacheUtil.del(userId);
+    
+    trackQuery('updateUserVerification', startTime, false);
+    return { success: true };
+  } catch (error) {
+    console.error('خطأ في تحديث تفعيل المستخدم:', error);
+    trackQuery('updateUserVerification', startTime, false);
+    return { success: false };
+  }
+}
+
+// Cache-aware course operations
+export async function addCourse(title, description, startDate, instructor) {
+  const startTime = Date.now();
+  
+  try {
+    const result = await db.run(
+      'INSERT INTO courses (title, description, start_date, instructor) VALUES (?, ?, ?, ?)',
+      [title, description, startDate, instructor]
+    );
+    
+    // Invalidate course cache
+    courseCacheUtil.delAll();
+    
+    trackQuery('addCourse', startTime, false);
+    return { success: true, courseId: result.lastID };
+  } catch (error) {
+    console.error('خطأ في إضافة الكورس:', error);
+    trackQuery('addCourse', startTime, false);
+    return { success: false };
+  }
+}
+
+// Cache-aware assignment operations
+export async function addAssignment(title, description, dueDate, courseId) {
+  const startTime = Date.now();
+  
+  try {
+    const result = await db.run(
+      'INSERT INTO assignments (title, description, due_date, course_id) VALUES (?, ?, ?, ?)',
+      [title, description, dueDate, courseId]
+    );
+    
+    // Invalidate assignment cache
+    assignmentCacheUtil.delAll();
+    if (courseId) {
+      courseCacheUtil.delAssignments(courseId);
+    }
+    
+    trackQuery('addAssignment', startTime, false);
+    return { success: true, assignmentId: result.lastID };
+  } catch (error) {
+    console.error('خطأ في إضافة الواجب:', error);
+    trackQuery('addAssignment', startTime, false);
+    return { success: false };
+  }
+}
+
+// Database statistics for monitoring
+export function getDbStats() {
+  const avgQueryTime = dbStats.queries > 0 ? dbStats.totalTime / dbStats.queries : 0;
+  const cacheHitRate = dbStats.queries > 0 ? (dbStats.cacheHits / dbStats.queries) * 100 : 0;
+  
+  return {
+    ...dbStats,
+    avgQueryTime: Math.round(avgQueryTime * 100) / 100,
+    cacheHitRate: Math.round(cacheHitRate * 100) / 100
+  };
+}
+
+// Reset statistics
+export function resetDbStats() {
+  dbStats.queries = 0;
+  dbStats.cacheHits = 0;
+  dbStats.cacheMisses = 0;
+  dbStats.totalTime = 0;
+  dbStats.slowQueries = [];
 }
 
 // getAssignments
