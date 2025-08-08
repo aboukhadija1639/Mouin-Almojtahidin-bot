@@ -38,6 +38,7 @@ import { handleUpcominglessons } from './bot/commands/upcominglessons.js';
 import { handleBroadcast } from './bot/commands/broadcast.js';
 import { handleReportbug } from './bot/commands/reportbug.js';
 import { escapeMarkdownV2 } from './bot/utils/escapeMarkdownV2.js';
+import { wrapAsync } from './bot/middlewares/asyncWrapper.js';
 
 // Validate environment variables
 function validateConfig() {
@@ -397,39 +398,39 @@ async function initBot() {
 // Register all bot commands
 function registerCommands(bot) {
   console.log('Registering public commands...');
-  bot.command('start', handleStart);
-  bot.command('verify', handleVerify);
-  bot.command('help', handleHelp);
+  bot.command('start', wrapAsync(handleStart));
+  bot.command('verify', wrapAsync(handleVerify));
+  bot.command('help', wrapAsync(handleHelp));
   
   console.log('Registering user commands...');
-  bot.command('faq', handleFaq);
-  bot.command('profile', handleProfile);
-  bot.command('courses', handleCourses);
-  bot.command('assignments', handleAssignments);
-  bot.command('attendance', handleAttendance);
-  bot.command('reminders', handleReminders);
-  bot.command('submit', handleSubmit);
-  bot.command('addreminder', handleAddReminder);
-  bot.command('listreminders', handleListreminders);
-  bot.command('deletereminder', handleDeleteReminder);
-  bot.command('upcominglessons', handleUpcominglessons);
-  bot.command('feedback', handleFeedback);
-  bot.command('reportbug', handleReportbug);
-  bot.command('settings', handleSettings);
-  bot.command('health', handleHealth);
+  bot.command('faq', wrapAsync(handleFaq));
+  bot.command('profile', wrapAsync(handleProfile));
+  bot.command('courses', wrapAsync(handleCourses));
+  bot.command('assignments', wrapAsync(handleAssignments));
+  bot.command('attendance', wrapAsync(handleAttendance));
+  bot.command('reminders', wrapAsync(handleReminders));
+  bot.command('submit', wrapAsync(handleSubmit));
+  bot.command('addreminder', wrapAsync(handleAddReminder));
+  bot.command('listreminders', wrapAsync(handleListreminders));
+  bot.command('deletereminder', wrapAsync(handleDeleteReminder));
+  bot.command('upcominglessons', wrapAsync(handleUpcominglessons));
+  bot.command('feedback', wrapAsync(handleFeedback));
+  bot.command('reportbug', wrapAsync(handleReportbug));
+  bot.command('settings', wrapAsync(handleSettings));
+  bot.command('health', wrapAsync(handleHealth));
   
   console.log('Registering admin commands...');
-  bot.command('stats', requireAdmin, handleStats);
-  bot.command('publish', requireAdmin, handlePublish);
-  bot.command('addassignment', requireAdmin, handleAddAssignment);
-  bot.command('updateassignment', requireAdmin, handleUpdateAssignment);
-  bot.command('deleteassignment', requireAdmin, handleDeleteAssignment);
-  bot.command('deletecourse', requireAdmin, handleDeleteCourse);
-  bot.command('addcourse', requireAdmin, handleAddCourse);
-  bot.command('updatecourse', requireAdmin, handleUpdateCourse);
-  bot.command('export', requireAdmin, handleExport);
-  bot.command('viewfeedback', requireAdmin, handleViewFeedback);
-  bot.command('broadcast', requireAdmin, handleBroadcast);
+  bot.command('stats', requireAdmin, wrapAsync(handleStats));
+  bot.command('publish', requireAdmin, wrapAsync(handlePublish));
+  bot.command('addassignment', requireAdmin, wrapAsync(handleAddAssignment));
+  bot.command('updateassignment', requireAdmin, wrapAsync(handleUpdateAssignment));
+  bot.command('deleteassignment', requireAdmin, wrapAsync(handleDeleteAssignment));
+  bot.command('deletecourse', requireAdmin, wrapAsync(handleDeleteCourse));
+  bot.command('addcourse', requireAdmin, wrapAsync(handleAddCourse));
+  bot.command('updatecourse', requireAdmin, wrapAsync(handleUpdateCourse));
+  bot.command('export', requireAdmin, wrapAsync(handleExport));
+  bot.command('viewfeedback', requireAdmin, wrapAsync(handleViewFeedback));
+  bot.command('broadcast', requireAdmin, wrapAsync(handleBroadcast));
   
   console.log('Registering unknown command handler...');
   bot.on('text', async (ctx) => {
@@ -488,37 +489,37 @@ function registerCommands(bot) {
   // Register callback query handlers for inline buttons
   console.log('Registering callback query handlers...');
   
-  bot.action('profile', async (ctx) => {
+  bot.action('profile', wrapAsync(async (ctx) => {
     await ctx.answerCbQuery();
     await handleProfile(ctx);
-  });
+  }));
   
-  bot.action('courses', async (ctx) => {
+  bot.action('courses', wrapAsync(async (ctx) => {
     await ctx.answerCbQuery();
     await handleCourses(ctx);
-  });
+  }));
   
-  bot.action('assignments', async (ctx) => {
+  bot.action('assignments', wrapAsync(async (ctx) => {
     await ctx.answerCbQuery();
     await handleAssignments(ctx);
-  });
+  }));
   
-  bot.action('reminders', async (ctx) => {
+  bot.action('reminders', wrapAsync(async (ctx) => {
     await ctx.answerCbQuery();
     await handleReminders(ctx);
-  });
+  }));
   
-  bot.action('faq', async (ctx) => {
+  bot.action('faq', wrapAsync(async (ctx) => {
     await ctx.answerCbQuery();
     await handleFaq(ctx);
-  });
+  }));
   
-  bot.action('help', async (ctx) => {
+  bot.action('help', wrapAsync(async (ctx) => {
     await ctx.answerCbQuery();
     await handleHelp(ctx);
-  });
+  }));
   
-  bot.action('verify_account', async (ctx) => {
+  bot.action('verify_account', wrapAsync(async (ctx) => {
     await ctx.answerCbQuery();
     await ctx.reply(
       escapeMarkdownV2(
@@ -529,9 +530,9 @@ function registerCommands(bot) {
       ),
       { parse_mode: 'MarkdownV2' }
     );
-  });
+  }));
   
-  bot.action('support', async (ctx) => {
+  bot.action('support', wrapAsync(async (ctx) => {
     await ctx.answerCbQuery();
     await ctx.reply(
       escapeMarkdownV2(
@@ -544,13 +545,13 @@ function registerCommands(bot) {
       ),
       { parse_mode: 'MarkdownV2' }
     );
-  });
+  }));
 
   // Settings callback handlers
-  bot.action('toggle_reminders', handleToggleReminders);
-  bot.action('change_language', handleChangeLanguage);
-  bot.action('change_frequency', handleChangeFrequency);
-  bot.action('settings_help', handleSettingsHelp);
+  bot.action('toggle_reminders', wrapAsync(handleToggleReminders));
+  bot.action('change_language', wrapAsync(handleChangeLanguage));
+  bot.action('change_frequency', wrapAsync(handleChangeFrequency));
+  bot.action('settings_help', wrapAsync(handleSettingsHelp));
 
   console.log('✅ All bot commands and callbacks registered');
   logActivity('تم تسجيل جميع أوامر البوت والاستدعاءات');
