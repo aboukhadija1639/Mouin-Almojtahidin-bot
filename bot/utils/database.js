@@ -354,10 +354,19 @@ export async function initDatabase() {
 
     // Enable foreign keys
     await db.exec('PRAGMA foreign_keys = ON');
-
+    // NEW: Enable Write-Ahead Logging mode for better concurrency
+    await db.exec('PRAGMA journal_mode = WAL');
+    
     // Create tables
     await createTables();
     
+    // Ensure essential indexes exist for performance (after tables are created)
+    await db.exec('CREATE INDEX IF NOT EXISTS idx_assignments_due_date ON assignments(due_date)');
+    await db.exec('CREATE INDEX IF NOT EXISTS idx_custom_reminders_user_id ON custom_reminders(user_id)');
+    await db.exec('CREATE INDEX IF NOT EXISTS idx_submissions_user_id ON submissions(user_id)');
+    await db.exec('CREATE INDEX IF NOT EXISTS idx_attendance_user_id ON attendance(user_id)');
+    await db.exec('CREATE INDEX IF NOT EXISTS idx_assignments_course_id ON assignments(course_id)');
+
     console.log('✅ قاعدة البيانات متصلة بنجاح');
     return db;
   } catch (error) {
@@ -1224,3 +1233,20 @@ export async function closeDatabase() {
 }
 
 export { db, getDb};
+
+// NEW: Utility to run multiple operations in a single transaction
+export async function runTransaction(operationFn) {
+  if (typeof operationFn !== 'function') {
+    throw new TypeError('operationFn must be a function');
+  }
+  try {
+    await db.exec('BEGIN TRANSACTION');
+    const result = await operationFn(db);
+    await db.exec('COMMIT');
+    return result;
+  } catch (err) {
+    console.error('[DB] Transaction failed, performing ROLLBACK', err);
+    try { await db.exec('ROLLBACK'); } catch (_) { /* ignore */ }
+    throw err;
+  }
+}
