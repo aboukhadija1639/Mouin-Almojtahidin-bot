@@ -39,7 +39,7 @@ export async function initDatabase() {
     ensureLogFiles();
     
     db = await open({
-      filename: './data/mouin_almojtahidin.db',
+      filename: config.database.path,
       driver: sqlite3.Database
     });
 

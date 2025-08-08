@@ -88,7 +88,8 @@ export function loggerMiddleware() {
       
       // Send error message to user
       try {
-        await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`);
+        await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel.replace(/@/g, '\\@')}`,
+          { parse_mode: 'MarkdownV2' });
       } catch (replyError) {
         logError(replyError, 'ERROR_REPLY');
       }
