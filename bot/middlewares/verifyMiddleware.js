@@ -46,8 +46,8 @@ export function verifyMiddleware() {
       if (!verified) {
         const currentMessages = messages[userLanguage] || messages.ar;
         await ctx.reply(
-          `${currentMessages.activationRequired} ${config.admin.supportChannel}`,
-          { parse_mode: 'Markdown' }
+          `${currentMessages.activationRequired} ${config.admin.supportChannel.replace(/@/g, '\\@')}`,
+          { parse_mode: 'MarkdownV2' }
         );
         return;
       }
@@ -76,8 +76,8 @@ export async function requireAdmin(ctx, next) {
       await ctx.reply(
         `🚫 *غير مسموح*\n\n` +
         `هذا الأمر مخصص للمدراء فقط.\n\n` +
-        `للمساعدة، تواصل مع ${config.admin.supportChannel}`,
-        { parse_mode: 'Markdown' }
+        `للمساعدة، تواصل مع ${config.admin.supportChannel.replace(/@/g, '\\@')}`,
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }

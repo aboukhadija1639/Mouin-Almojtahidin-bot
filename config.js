@@ -46,6 +46,20 @@ export const config = {
     maxRequestsPerMinute: parseInt(process.env.MAX_REQUESTS_PER_MINUTE) || 30,
     maxRequestsPerHour: parseInt(process.env.MAX_REQUESTS_PER_HOUR) || 100
   },
+  // New: Server/Webhook settings for Railway and cloud deployment
+  server: {
+    port: parseInt(process.env.PORT, 10) || 3000,
+  },
+  webhook: {
+    domain: process.env.WEBHOOK_DOMAIN || '',
+    path: process.env.WEBHOOK_PATH || '/bot',
+    // Support legacy WEBHOOK_URL if already provided
+    url: process.env.WEBHOOK_URL || (process.env.WEBHOOK_DOMAIN ? `https://${process.env.WEBHOOK_DOMAIN}${process.env.WEBHOOK_PATH || '/bot'}` : ''),
+  },
+  // Database configuration (supports Railway style DATABASE_URL/DATABASE_PATH)
+  database: {
+    path: process.env.DATABASE_URL || process.env.DATABASE_PATH || './data/mouin_almojtahidin.db',
+  },
   faq: [
     {
       question: "كيف يمكنني التسجيل في الكورس؟",

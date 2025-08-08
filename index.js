@@ -150,7 +150,7 @@ async function setupWebhookServer(bot, port = 3000) {
     });
     
     // Webhook endpoint
-    app.post('/bot', (req, res) => {
+    app.post(config.webhook.path || '/bot', (req, res) => {
       try {
         bot.handleUpdate(req.body);
         res.sendStatus(200);
@@ -189,7 +189,27 @@ async function launchBotWithRetry(bot, maxRetries = 5) {
     throw new Error('Invalid bot token - please check BOT_TOKEN in .env file');
   }
 
-  // Try polling mode first
+  // If webhook URL specified, prefer webhook mode first
+  if (config.webhook.url) {
+    try {
+      console.log('🌐 Configured for webhook mode, registering webhook...');
+      await bot.telegram.setWebhook(config.webhook.url, {
+        drop_pending_updates: true,
+        allowed_updates: ['message', 'callback_query', 'inline_query']
+      });
+
+      const server = await setupWebhookServer(bot, config.server.port);
+      console.log('✅ Bot launched successfully in webhook mode');
+      return { success: true, mode: 'webhook', server };
+    } catch (webhookError) {
+      console.error('❌ Failed to start in webhook mode, falling back to polling:', webhookError.message);
+      logError(webhookError, 'WEBHOOK_PRIMARY_FAILED');
+      // Clear webhook before polling
+      try { await bot.telegram.deleteWebhook({ drop_pending_updates: true }); } catch {}
+    }
+  }
+
+  // Try polling mode if webhook not configured or failed
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`🔄 Attempting to launch bot with polling (Attempt ${attempt}/${maxRetries})`);
@@ -276,9 +296,9 @@ async function setupWebhookFallback(bot) {
     if (webhookServer) {
       // For local development, you might want to use ngrok or similar
       // For production, use your actual domain
-      const webhookUrl = process.env.WEBHOOK_URL || `http://localhost:3000/bot`;
+      const webhookUrl = config.webhook.url || `http://localhost:${config.server.port}${config.webhook.path || '/bot'}`;
       
-      if (process.env.WEBHOOK_URL) {
+      if (config.webhook.url) {
         await bot.telegram.setWebhook(webhookUrl, {
           drop_pending_updates: true,
           allowed_updates: ['message', 'callback_query', 'inline_query']
@@ -313,11 +333,14 @@ async function initBot() {
     const botInfo = await bot.telegram.getMe();
     console.log('Bot info:', botInfo);
     
-    console.log('Clearing webhooks and updates...');
-    const updatesCleared = await clearUpdatesWithRetry(bot);
-    if (!updatesCleared) {
-      console.warn('⚠️ Failed to clear updates, proceeding in polling mode');
-      logActivity('Failed to clear updates, proceeding in polling mode');
+    // Only clear webhooks and updates when using polling mode
+    if (!config.webhook.url) {
+      console.log('Clearing webhooks and updates for polling mode...');
+      const updatesCleared = await clearUpdatesWithRetry(bot);
+      if (!updatesCleared) {
+        console.warn('⚠️ Failed to clear updates, proceeding in polling mode');
+        logActivity('Failed to clear updates, proceeding in polling mode');
+      }
     }
     
     console.log('Initializing database...');

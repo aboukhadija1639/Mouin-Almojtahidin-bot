@@ -1,5 +1,6 @@
 import { addAttendance, getLesson } from '../utils/database.js';
 import { config } from '../../config.js';
+import { escapeMarkdownV2, bold, code } from '../utils/escapeMarkdownV2.js';
 
 export async function handleAttendance(ctx) {
   try {
@@ -10,11 +11,12 @@ export async function handleAttendance(ctx) {
     const args = messageText.split(' ');
     if (args.length < 2) {
       await ctx.reply(
-        `📋 *كيفية تسجيل الحضور*\n` +
-        `الصيغة الصحيحة: \`/attendance رقم_الدرس\`\n` +
-        `مثال: \`/attendance 1\`\n` +
-        `💡 يمكنك الحصول على أرقام الدروس من المدرب أو من الإعلانات.`,
-        { parse_mode: 'Markdown' }
+        `📋 ${bold('كيفية تسجيل الحضور')}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `${escapeMarkdownV2('الصيغة الصحيحة:')} ${code('/attendance رقم_الدرس')}\n` +
+        `${escapeMarkdownV2('مثال:')} ${code('/attendance 1')}\n\n` +
+        `💡 ${escapeMarkdownV2('يمكنك الحصول على أرقام الدروس من المدرب أو من الإعلانات.')}`,
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -25,10 +27,10 @@ export async function handleAttendance(ctx) {
     // Validate lesson ID
     if (isNaN(lessonId) || lessonId <= 0) {
       await ctx.reply(
-        `❌ *رقم الدرس غير صحيح*\n` +
-        `يرجى إدخال رقم صحيح للدرس.\n` +
-        `مثال: \`/attendance 1\``,
-        { parse_mode: 'Markdown' }
+        `❌ ${bold('رقم الدرس غير صحيح')}\n\n` +
+        `${escapeMarkdownV2('يرجى إدخال رقم صحيح للدرس.')}\n` +
+        `${escapeMarkdownV2('مثال:')} ${code('/attendance 1')}`,
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -37,10 +39,10 @@ export async function handleAttendance(ctx) {
     const lesson = await getLesson(lessonId);
     if (!lesson) {
       await ctx.reply(
-        `❌ *الدرس غير موجود*\n` +
-        `لم يتم العثور على درس برقم ${lessonId}.\n` +
-        `تأكد من رقم الدرس أو تواصل مع ${config.admin.supportChannel}`,
-        { parse_mode: 'Markdown' }
+        `❌ ${bold('الدرس غير موجود')}\n\n` +
+        `${escapeMarkdownV2(`لم يتم العثور على درس برقم ${lessonId}.`)}\n` +
+        `${escapeMarkdownV2('تأكد من رقم الدرس أو تواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -49,26 +51,33 @@ export async function handleAttendance(ctx) {
     const attendanceSuccess = await addAttendance(userId, lessonId);
     
     if (attendanceSuccess) {
+      const escapedTitle = escapeMarkdownV2(lesson.title || '');
+      const escapedDate = escapeMarkdownV2(lesson.date || '');
+      const escapedTime = escapeMarkdownV2(lesson.time || '');
       await ctx.reply(
-        `✅ *تم تسجيل حضورك بنجاح!*\n` +
-        `📚 *الدرس:* ${lesson.title}\n` +
-        `📅 *التاريخ:* ${lesson.date}\n` +
-        `⏰ *الوقت:* ${lesson.time}\n` +
-        `🎉 شكراً لك على الحضور والمتابعة!\n` +
-        `استخدم /profile لعرض إجمالي حضورك.`,
-        { parse_mode: 'Markdown' }
+        `✅ ${bold('تم تسجيل حضورك بنجاح!')}\n\n` +
+        `📚 ${bold('الدرس:')} ${escapedTitle}\n` +
+        `📅 ${bold('التاريخ:')} ${escapedDate}\n` +
+        `⏰ ${bold('الوقت:')} ${escapedTime}\n\n` +
+        `${escapeMarkdownV2('🎉 شكراً لك على الحضور والمتابعة!')}\n` +
+        `${escapeMarkdownV2('استخدم')} ${code('/profile')} ${escapeMarkdownV2('لعرض إجمالي حضورك.')}`,
+        { parse_mode: 'MarkdownV2' }
       );
     } else {
       await ctx.reply(
-        `❌ *فشل في تسجيل الحضور*\n` +
-        `حدث خطأ تقني، حاول مرة أخرى.\n` +
-        `إذا استمر الخطأ، تواصل مع ${config.admin.supportChannel}`,
-        { parse_mode: 'Markdown' }
+        `❌ ${bold('فشل في تسجيل الحضور')}\n\n` +
+        `${escapeMarkdownV2('حدث خطأ تقني، حاول مرة أخرى.')}\n` +
+        `${escapeMarkdownV2('إذا استمر الخطأ، تواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
+        { parse_mode: 'MarkdownV2' }
       );
     }
 
   } catch (error) {
     console.error('خطأ في أمر /attendance:', error);
-    await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`);
+    await ctx.reply(
+      `❌ ${bold('حدث خطأ')}\n\n` +
+      `${escapeMarkdownV2('حاول مرة أخرى أو تواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
+      { parse_mode: 'MarkdownV2' }
+    );
   }
 }
