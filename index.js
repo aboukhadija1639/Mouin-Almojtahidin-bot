@@ -32,11 +32,11 @@ import { handleExport } from './bot/commands/export.js';
 import { handleFeedback, handleViewFeedback } from './bot/commands/feedback.js';
 import { handleSettings, handleToggleReminders, handleChangeLanguage, handleChangeFrequency, handleSettingsHelp } from './bot/commands/settings.js';
 import { handleHealth } from './bot/commands/health.js';
-import { handleListReminders } from './bot/commands/listreminders.js';
+import { handleListreminders } from './bot/commands/listreminders.js';
 import { handleDeleteReminder } from './bot/commands/deletereminder.js';
-import { handleUpcomingLessons } from './bot/commands/upcominglessons.js';
+import { handleUpcominglessons } from './bot/commands/upcominglessons.js';
 import { handleBroadcast } from './bot/commands/broadcast.js';
-import { handleReportBug } from './bot/commands/reportbug.js';
+import { handleReportbug } from './bot/commands/reportbug.js';
 import { escapeMarkdownV2 } from './bot/utils/escapeMarkdownV2.js';
 
 // Validate environment variables
@@ -387,11 +387,11 @@ function registerCommands(bot) {
   bot.command('reminders', handleReminders);
   bot.command('submit', handleSubmit);
   bot.command('addreminder', handleAddReminder);
-  bot.command('listreminders', handleListReminders);
+  bot.command('listreminders', handleListreminders);
   bot.command('deletereminder', handleDeleteReminder);
-  bot.command('upcominglessons', handleUpcomingLessons);
+  bot.command('upcominglessons', handleUpcominglessons);
   bot.command('feedback', handleFeedback);
-  bot.command('reportbug', handleReportBug);
+  bot.command('reportbug', handleReportbug);
   bot.command('settings', handleSettings);
   bot.command('health', handleHealth);
   

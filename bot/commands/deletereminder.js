@@ -1,9 +1,9 @@
-// bot/commands/deletereminder.js
-import { deleteReminder } from '../utils/database.js';
+// bot/commands/DeleteReminder.js
+import { DeleteReminder } from '../utils/database.js';
 import { escapeMarkdownV2, bold, italic, code } from '../utils/escapeMarkdownV2.js';
 import { config } from '../../config.js';
 
-export async function handleDeletereminder(ctx) {
+export async function handleDeleteReminder(ctx) {
   try {
     const userId = ctx.from.id;
     const messageText = ctx.message.text;
@@ -14,7 +14,7 @@ export async function handleDeletereminder(ctx) {
         `🗑️ ${bold('حذف تذكير')}\n\n` +
         `━━━━━━━━━━━━━━━━━━━━\n\n` +
         `📝 ${bold('الاستخدام الصحيح:')}\n` +
-        `${code('/deletereminder رقم_ID')}\n\n` +
+        `${code('/DeleteReminder رقم_ID')}\n\n` +
         `💡 ${bold('للحصول على رقم ID:')}\n` +
         `استخدم ${code('/listreminders')} لعرض جميع تذكيراتك مع أرقام ID\n\n` +
         `📞 للمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}`,
@@ -36,7 +36,7 @@ export async function handleDeletereminder(ctx) {
     }
 
     // Attempt to delete the reminder
-    const result = await deleteReminder(userId, reminderId);
+    const result = await DeleteReminder(userId, reminderId);
 
     if (result && result.changes > 0) {
       await ctx.reply(
@@ -57,7 +57,7 @@ export async function handleDeletereminder(ctx) {
     }
 
   } catch (error) {
-    console.error('خطأ في أمر /deletereminder:', error);
+    console.error('خطأ في أمر /DeleteReminder:', error);
     await ctx.reply(
       `❌ ${bold('حدث خطأ أثناء حذف التذكير')}\n\n` +
       `حاول مرة أخرى أو تواصل مع ${escapeMarkdownV2(config.admin.supportChannel)}`,

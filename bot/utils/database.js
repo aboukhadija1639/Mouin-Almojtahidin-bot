@@ -832,7 +832,7 @@ export async function getUserReminders(userId) {
   }
 }
 
-export async function deleteReminder(userId, reminderId) {
+export async function DeleteReminder(userId, reminderId) {
   try {
     const result = await db.run(
       'DELETE FROM custom_reminders WHERE reminder_id = ? AND user_id = ?',
