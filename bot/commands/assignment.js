@@ -1,5 +1,7 @@
 import { addAssignment, updateAssignment, deleteAssignment, getAssignment, submitAnswer } from '../utils/database.js';
 import { config } from '../../config.js';
+import { templates, assignmentTemplates } from '../utils/messageTemplates.js';
+import { escapeMarkdownV2, bold, italic, code } from '../utils/escapeMarkdownV2.js';
 
 // Handle add assignment command (admin only)
 export async function handleAddAssignment(ctx) {
@@ -10,10 +12,8 @@ export async function handleAddAssignment(ctx) {
     // Check if user is admin
     if (!config.admin.userIds.includes(userId)) {
       await ctx.reply(
-        `🚫 *غير مسموح*\n` +
-        `هذا الأمر مخصص للمدراء فقط.\n` +
-        `للمساعدة، تواصل مع ${config.admin.supportChannel}`,
-        { parse_mode: 'Markdown' }
+        templates.accessDenied('هذا الأمر مخصص للمدراء فقط', config.admin.supportChannel),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -22,12 +22,12 @@ export async function handleAddAssignment(ctx) {
     const args = messageText.split(' ');
     if (args.length < 6) {
       await ctx.reply(
-        `📝 *كيفية إضافة واجب*\n` +
-        `الصيغة الصحيحة:\n` +
-        `\`/addassignment رقم_الكورس العنوان السؤال الإجابة_الصحيحة الموعد_النهائي\`\n` +
-        `مثال:\n` +
-        `\`/addassignment 1 "اختبار الوحدة الأولى" "ما هو تعريف البرمجة؟" "البرمجة هي عملية كتابة التعليمات" "2024-01-20"\``,
-        { parse_mode: 'Markdown' }
+        templates.info(
+          'كيفية إضافة واجب',
+          `الصيغة الصحيحة:\n${code('/addassignment رقم_الكورس العنوان السؤال الإجابة_الصحيحة الموعد_النهائي')}\n\nمثال:\n${code('/addassignment 1 "اختبار الوحدة الأولى" "ما هو تعريف البرمجة؟" "البرمجة هي عملية كتابة التعليمات" "2024-01-20"')}`,
+          'تأكد من إدخال جميع المعلومات المطلوبة'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -41,9 +41,12 @@ export async function handleAddAssignment(ctx) {
     // Validate course ID
     if (isNaN(courseId) || courseId <= 0) {
       await ctx.reply(
-        `❌ *رقم الكورس غير صحيح*\n` +
-        `يرجى إدخال رقم صحيح للكورس.`,
-        { parse_mode: 'Markdown' }
+        templates.error(
+          'رقم الكورس غير صحيح',
+          'يرجى إدخال رقم صحيح للكورس',
+          'تأكد من أن رقم الكورس عدد صحيح أكبر من صفر'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -51,10 +54,12 @@ export async function handleAddAssignment(ctx) {
     // Validate title length
     if (!title || title.length < 3 || title.length > 100) {
       await ctx.reply(
-        `❌ *عنوان الواجب غير صحيح*\n` +
-        `يجب أن يكون العنوان بين 3 و 100 حرف.\n` +
-        `العنوان الحالي: ${title?.length || 0} حرف`,
-        { parse_mode: 'Markdown' }
+        templates.error(
+          'عنوان الواجب غير صحيح',
+          `يجب أن يكون العنوان بين 3 و 100 حرف. العنوان الحالي: ${title?.length || 0} حرف`,
+          'اختر عنواناً واضحاً ومختصراً للواجب'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -62,10 +67,12 @@ export async function handleAddAssignment(ctx) {
     // Validate question length
     if (!question || question.length < 10 || question.length > 500) {
       await ctx.reply(
-        `❌ *سؤال الواجب غير صحيح*\n` +
-        `يجب أن يكون السؤال بين 10 و 500 حرف.\n` +
-        `السؤال الحالي: ${question?.length || 0} حرف`,
-        { parse_mode: 'Markdown' }
+        templates.error(
+          'سؤال الواجب غير صحيح',
+          `يجب أن يكون السؤال بين 10 و 500 حرف. السؤال الحالي: ${question?.length || 0} حرف`,
+          'تأكد من أن السؤال واضح ومفهوم'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -73,10 +80,12 @@ export async function handleAddAssignment(ctx) {
     // Validate correct answer length
     if (!correctAnswer || correctAnswer.length < 2 || correctAnswer.length > 200) {
       await ctx.reply(
-        `❌ *الإجابة الصحيحة غير صحيحة*\n` +
-        `يجب أن تكون الإجابة بين 2 و 200 حرف.\n` +
-        `الإجابة الحالية: ${correctAnswer?.length || 0} حرف`,
-        { parse_mode: 'Markdown' }
+        templates.error(
+          'الإجابة الصحيحة غير صحيحة',
+          `يجب أن تكون الإجابة بين 2 و 200 حرف. الإجابة الحالية: ${correctAnswer?.length || 0} حرف`,
+          'اكتب الإجابة الصحيحة بوضوح'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -85,10 +94,12 @@ export async function handleAddAssignment(ctx) {
     const deadlineRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!deadline || !deadlineRegex.test(deadline)) {
       await ctx.reply(
-        `❌ *تاريخ الموعد النهائي غير صحيح*\n` +
-        `يجب أن يكون التاريخ بصيغة: YYYY-MM-DD\n` +
-        `مثال: 2024-12-31`,
-        { parse_mode: 'Markdown' }
+        templates.error(
+          'تاريخ الموعد النهائي غير صحيح',
+          'يجب أن يكون التاريخ بصيغة: YYYY-MM-DD',
+          'مثال: 2024-12-31'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -100,11 +111,12 @@ export async function handleAddAssignment(ctx) {
     
     if (deadlineDate < today) {
       await ctx.reply(
-        `❌ *الموعد النهائي في الماضي*\n` +
-        `يجب أن يكون الموعد النهائي في المستقبل.\n` +
-        `التاريخ المحدد: ${deadline}\n` +
-        `التاريخ الحالي: ${today.toISOString().split('T')[0]}`,
-        { parse_mode: 'Markdown' }
+        templates.error(
+          'الموعد النهائي في الماضي',
+          `يجب أن يكون الموعد النهائي في المستقبل. التاريخ المحدد: ${deadline} والتاريخ الحالي: ${today.toISOString().split('T')[0]}`,
+          'اختر تاريخاً في المستقبل للموعد النهائي'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -114,26 +126,36 @@ export async function handleAddAssignment(ctx) {
     
     if (assignmentId) {
       await ctx.reply(
-        `✅ *تم إضافة الواجب بنجاح*\n` +
-        `🆔 *رقم الواجب:* ${assignmentId}\n` +
-        `📚 *رقم الكورس:* ${courseId}\n` +
-        `📝 *العنوان:* ${title}\n` +
-        `❓ *السؤال:* ${question}\n` +
-        `✅ *الإجابة الصحيحة:* ${correctAnswer}\n` +
-        `📅 *الموعد النهائي:* ${deadline}`,
-        { parse_mode: 'Markdown' }
+        assignmentTemplates.created({
+          id: assignmentId,
+          courseId: courseId,
+          title: title,
+          question: question,
+          deadline: deadline
+        }),
+        { parse_mode: 'MarkdownV2' }
       );
     } else {
       await ctx.reply(
-        `❌ *فشل في إضافة الواجب*\n` +
-        `حدث خطأ تقني، حاول مرة أخرى.`,
-        { parse_mode: 'Markdown' }
+        templates.error(
+          'فشل في إضافة الواجب',
+          'حدث خطأ تقني أثناء إضافة الواجب',
+          'حاول مرة أخرى أو تواصل مع الدعم الفني'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
     }
 
   } catch (error) {
     console.error('خطأ في أمر /addassignment:', error);
-    await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`);
+    await ctx.reply(
+      templates.error(
+        'حدث خطأ غير متوقع',
+        'تعذر معالجة طلبك في الوقت الحالي',
+        `حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`
+      ),
+      { parse_mode: 'MarkdownV2' }
+    );
   }
 }
 
@@ -146,10 +168,8 @@ export async function handleUpdateAssignment(ctx) {
     // Check if user is admin
     if (!config.admin.userIds.includes(userId)) {
       await ctx.reply(
-        `🚫 *غير مسموح*\n` +
-        `هذا الأمر مخصص للمدراء فقط.\n` +
-        `للمساعدة، تواصل مع ${config.admin.supportChannel}`,
-        { parse_mode: 'Markdown' }
+        templates.accessDenied('هذا الأمر مخصص للمدراء فقط', config.admin.supportChannel),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -158,13 +178,12 @@ export async function handleUpdateAssignment(ctx) {
     const args = messageText.split(' ');
     if (args.length < 4) {
       await ctx.reply(
-        `🔄 *كيفية تحديث واجب*\n` +
-        `الصيغة الصحيحة:\n` +
-        `\`/updateassignment رقم_الواجب الحقل القيمة_الجديدة\`\n` +
-        `الحقول المتاحة: title, question, correct_answer, deadline\n` +
-        `مثال:\n` +
-        `\`/updateassignment 1 title "عنوان جديد"\``,
-        { parse_mode: 'Markdown' }
+        templates.info(
+          'كيفية تحديث واجب',
+          `الصيغة الصحيحة:\n${code('/updateassignment رقم_الواجب الحقل القيمة_الجديدة')}\n\nالحقول المتاحة: title, question, correct_answer, deadline\n\nمثال:\n${code('/updateassignment 1 title "عنوان جديد"')}`,
+          'تأكد من صحة اسم الحقل والقيمة الجديدة'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -176,9 +195,12 @@ export async function handleUpdateAssignment(ctx) {
     // Validate assignment ID
     if (isNaN(assignmentId) || assignmentId <= 0) {
       await ctx.reply(
-        `❌ *رقم الواجب غير صحيح*\n` +
-        `يرجى إدخال رقم صحيح للواجب.`,
-        { parse_mode: 'Markdown' }
+        templates.error(
+          'رقم الواجب غير صحيح',
+          'يرجى إدخال رقم صحيح للواجب',
+          'تأكد من أن رقم الواجب عدد صحيح أكبر من صفر'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -187,9 +209,12 @@ export async function handleUpdateAssignment(ctx) {
     const assignment = await getAssignment(assignmentId);
     if (!assignment) {
       await ctx.reply(
-        `❌ *الواجب غير موجود*\n` +
-        `لم يتم العثور على واجب برقم ${assignmentId}.`,
-        { parse_mode: 'Markdown' }
+        templates.error(
+          'الواجب غير موجود',
+          `لم يتم العثور على واجب برقم ${assignmentId}`,
+          'تأكد من صحة رقم الواجب أو راجع قائمة الواجبات المتاحة'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -199,23 +224,34 @@ export async function handleUpdateAssignment(ctx) {
     
     if (updateSuccess) {
       await ctx.reply(
-        `✅ *تم تحديث الواجب بنجاح*\n` +
-        `🆔 *رقم الواجب:* ${assignmentId}\n` +
-        `🔄 *الحقل المحدث:* ${field}\n` +
-        `📝 *القيمة الجديدة:* ${newValue}`,
-        { parse_mode: 'Markdown' }
+        assignmentTemplates.updated({
+          id: assignmentId,
+          field: field,
+          newValue: newValue
+        }),
+        { parse_mode: 'MarkdownV2' }
       );
     } else {
       await ctx.reply(
-        `❌ *فشل في تحديث الواجب*\n` +
-        `تأكد من صحة اسم الحقل أو حاول مرة أخرى.`,
-        { parse_mode: 'Markdown' }
+        templates.error(
+          'فشل في تحديث الواجب',
+          'تعذر تحديث الواجب المحدد',
+          'تأكد من صحة اسم الحقل أو حاول مرة أخرى'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
     }
 
   } catch (error) {
     console.error('خطأ في أمر /updateassignment:', error);
-    await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`);
+    await ctx.reply(
+      templates.error(
+        'حدث خطأ غير متوقع',
+        'تعذر معالجة طلبك في الوقت الحالي',
+        `حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`
+      ),
+      { parse_mode: 'MarkdownV2' }
+    );
   }
 }
 
@@ -228,10 +264,8 @@ export async function handleDeleteAssignment(ctx) {
     // Check if user is admin
     if (!config.admin.userIds.includes(userId)) {
       await ctx.reply(
-        `🚫 *غير مسموح*\n` +
-        `هذا الأمر مخصص للمدراء فقط.\n` +
-        `للمساعدة، تواصل مع ${config.admin.supportChannel}`,
-        { parse_mode: 'Markdown' }
+        templates.accessDenied('هذا الأمر مخصص للمدراء فقط', config.admin.supportChannel),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -240,10 +274,12 @@ export async function handleDeleteAssignment(ctx) {
     const args = messageText.split(' ');
     if (args.length < 2) {
       await ctx.reply(
-        `🗑️ *كيفية حذف واجب*\n` +
-        `الصيغة الصحيحة: \`/deleteassignment رقم_الواجب\`\n` +
-        `مثال: \`/deleteassignment 1\``,
-        { parse_mode: 'Markdown' }
+        templates.info(
+          'كيفية حذف واجب',
+          `الصيغة الصحيحة: ${code('/deleteassignment رقم_الواجب')}\n\nمثال: ${code('/deleteassignment 1')}`,
+          'تأكد من رقم الواجب قبل الحذف - هذا الإجراء لا يمكن التراجع عنه'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -253,9 +289,12 @@ export async function handleDeleteAssignment(ctx) {
     // Validate assignment ID
     if (isNaN(assignmentId) || assignmentId <= 0) {
       await ctx.reply(
-        `❌ *رقم الواجب غير صحيح*\n` +
-        `يرجى إدخال رقم صحيح للواجب.`,
-        { parse_mode: 'Markdown' }
+        templates.error(
+          'رقم الواجب غير صحيح',
+          'يرجى إدخال رقم صحيح للواجب',
+          'تأكد من أن رقم الواجب عدد صحيح أكبر من صفر'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -264,9 +303,12 @@ export async function handleDeleteAssignment(ctx) {
     const assignment = await getAssignment(assignmentId);
     if (!assignment) {
       await ctx.reply(
-        `❌ *الواجب غير موجود*\n` +
-        `لم يتم العثور على واجب برقم ${assignmentId}.`,
-        { parse_mode: 'Markdown' }
+        templates.error(
+          'الواجب غير موجود',
+          `لم يتم العثور على واجب برقم ${assignmentId}`,
+          'تأكد من صحة رقم الواجب أو راجع قائمة الواجبات المتاحة'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -276,22 +318,33 @@ export async function handleDeleteAssignment(ctx) {
     
     if (deleteResult.success) {
       await ctx.reply(
-        `✅ *تم حذف الواجب بنجاح*\n` +
-        `🆔 *رقم الواجب المحذوف:* ${assignmentId}\n` +
-        `📝 *عنوان الواجب:* ${assignment.title}`,
-        { parse_mode: 'Markdown' }
+        assignmentTemplates.deleted({
+          id: assignmentId,
+          title: assignment.title
+        }),
+        { parse_mode: 'MarkdownV2' }
       );
     } else {
       await ctx.reply(
-        `❌ *فشل في حذف الواجب*\n` +
-        `حدث خطأ تقني، حاول مرة أخرى.`,
-        { parse_mode: 'Markdown' }
+        templates.error(
+          'فشل في حذف الواجب',
+          'تعذر حذف الواجب المحدد',
+          'حدث خطأ تقني، حاول مرة أخرى أو تواصل مع الدعم الفني'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
     }
 
   } catch (error) {
     console.error('خطأ في أمر /deleteassignment:', error);
-    await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`);
+    await ctx.reply(
+      templates.error(
+        'حدث خطأ غير متوقع',
+        'تعذر معالجة طلبك في الوقت الحالي',
+        `حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`
+      ),
+      { parse_mode: 'MarkdownV2' }
+    );
   }
 }
 
@@ -305,10 +358,12 @@ export async function handleSubmit(ctx) {
     const args = messageText.split(' ');
     if (args.length < 3) {
       await ctx.reply(
-        `📋 *كيفية إرسال إجابة واجب*\n` +
-        `الصيغة الصحيحة: \`/submit رقم_الواجب الإجابة\`\n` +
-        `مثال: \`/submit 1 البرمجة هي عملية كتابة التعليمات\``,
-        { parse_mode: 'Markdown' }
+        templates.info(
+          'كيفية إرسال إجابة واجب',
+          `الصيغة الصحيحة: ${code('/submit رقم_الواجب الإجابة')}\n\nمثال: ${code('/submit 1 البرمجة هي عملية كتابة التعليمات')}`,
+          'تأكد من كتابة إجابتك بوضوح ودقة'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -319,9 +374,12 @@ export async function handleSubmit(ctx) {
     // Validate assignment ID
     if (isNaN(assignmentId) || assignmentId <= 0) {
       await ctx.reply(
-        `❌ *رقم الواجب غير صحيح*\n` +
-        `يرجى إدخال رقم صحيح للواجب.`,
-        { parse_mode: 'Markdown' }
+        templates.error(
+          'رقم الواجب غير صحيح',
+          'يرجى إدخال رقم صحيح للواجب',
+          'تأكد من أن رقم الواجب عدد صحيح أكبر من صفر'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -331,24 +389,34 @@ export async function handleSubmit(ctx) {
     
     if (result.success) {
       await ctx.reply(
-        `📝 *تم إرسال إجابتك بنجاح*\n` +
-        `${result.message}\n` +
-        `✅ *الإجابة الصحيحة:* ${result.correctAnswer}\n` +
-        `📊 *نقاطك:* ${result.score}/1\n` +
-        `شكراً لك على المشاركة! 🎉`,
-        { parse_mode: 'Markdown' }
+        assignmentTemplates.submitted({
+          message: result.message,
+          correctAnswer: result.correctAnswer,
+          score: result.score,
+          isCorrect: result.score === 1
+        }),
+        { parse_mode: 'MarkdownV2' }
       );
     } else {
       await ctx.reply(
-        `❌ *فشل في إرسال الإجابة*\n` +
-        `${result.message}\n` +
-        `تأكد من رقم الواجب أو تواصل مع ${config.admin.supportChannel}`,
-        { parse_mode: 'Markdown' }
+        templates.error(
+          'فشل في إرسال الإجابة',
+          result.message || 'تعذر إرسال إجابتك',
+          `تأكد من رقم الواجب أو تواصل مع ${config.admin.supportChannel}`
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
     }
 
   } catch (error) {
     console.error('خطأ في أمر /submit:', error);
-    await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`);
+    await ctx.reply(
+      templates.error(
+        'حدث خطأ غير متوقع',
+        'تعذر معالجة إجابتك في الوقت الحالي',
+        `حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`
+      ),
+      { parse_mode: 'MarkdownV2' }
+    );
   }
 }

@@ -1,6 +1,7 @@
 // bot/commands/addcourse.js
 import { addCourse } from '../utils/database.js';
-import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
+import { templates, courseTemplates } from '../utils/messageTemplates.js';
+import { escapeMarkdownV2, bold, italic, code } from '../utils/escapeMarkdownV2.js';
 import { config } from '../../config.js';
 
 export async function handleAddCourse(ctx) {
@@ -9,9 +10,11 @@ export async function handleAddCourse(ctx) {
     
     if (args.length < 2) {
       await ctx.reply(
-        `❌ *${escapeMarkdownV2('صيغة خاطئة')}*\n\n` +
-        `${escapeMarkdownV2('الصيغة:')} \`/addcourse <اسم_الكورس> <الوصف>\`\n` +
-        `${escapeMarkdownV2('مثال:')} \`/addcourse "رياضيات 101" "مقدمة في الرياضيات"\``,
+        templates.info(
+          'كيفية إضافة دورة جديدة',
+          `الصيغة الصحيحة: ${code('/addcourse <اسم_الكورس> <الوصف>')}\n\nمثال: ${code('/addcourse "رياضيات 101" "مقدمة في الرياضيات"')}`,
+          'تأكد من إدخال اسم الدورة والوصف بوضوح'
+        ),
         { parse_mode: 'MarkdownV2' }
       );
       return;
@@ -20,20 +23,51 @@ export async function handleAddCourse(ctx) {
     const courseName = args[0];
     const description = args.slice(1).join(' ');
 
+    // Validate course name
+    if (!courseName || courseName.length < 2 || courseName.length > 100) {
+      await ctx.reply(
+        templates.error(
+          'اسم الدورة غير صحيح',
+          `يجب أن يكون اسم الدورة بين 2 و 100 حرف. الاسم الحالي: ${courseName?.length || 0} حرف`,
+          'اختر اسماً واضحاً ومختصراً للدورة'
+        ),
+        { parse_mode: 'MarkdownV2' }
+      );
+      return;
+    }
+
+    // Validate description
+    if (!description || description.length < 5 || description.length > 500) {
+      await ctx.reply(
+        templates.error(
+          'وصف الدورة غير صحيح',
+          `يجب أن يكون وصف الدورة بين 5 و 500 حرف. الوصف الحالي: ${description?.length || 0} حرف`,
+          'اكتب وصفاً مفيداً يوضح محتوى الدورة'
+        ),
+        { parse_mode: 'MarkdownV2' }
+      );
+      return;
+    }
+
     // Add course to database
     const result = await addCourse(courseName, description);
     
     if (result.success) {
       await ctx.reply(
-        `✅ *${escapeMarkdownV2('تم إنشاء الكورس بنجاح')}*\n\n` +
-        `📚 ${escapeMarkdownV2('اسم الكورس:')} ${escapeMarkdownV2(courseName)}\n` +
-        `📝 ${escapeMarkdownV2('الوصف:')} ${escapeMarkdownV2(description)}\n` +
-        `🆔 ${escapeMarkdownV2('معرف الكورس:')} ${result.courseId}`,
+        courseTemplates.created({
+          name: courseName,
+          description: description,
+          id: result.courseId
+        }),
         { parse_mode: 'MarkdownV2' }
       );
     } else {
       await ctx.reply(
-        `❌ ${escapeMarkdownV2('فشل في إنشاء الكورس:')} ${escapeMarkdownV2(result.message || 'خطأ غير معروف')}`,
+        templates.error(
+          'فشل في إنشاء الدورة',
+          result.message || 'حدث خطأ غير معروف أثناء إنشاء الدورة',
+          'تأكد من عدم وجود دورة بنفس الاسم أو حاول مرة أخرى'
+        ),
         { parse_mode: 'MarkdownV2' }
       );
     }
@@ -41,7 +75,11 @@ export async function handleAddCourse(ctx) {
   } catch (error) {
     console.error('خطأ في أمر /addcourse:', error);
     await ctx.reply(
-      `❌ ${escapeMarkdownV2('حدث خطأ، حاول مرة أخرى أو تواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
+      templates.error(
+        'حدث خطأ غير متوقع',
+        'تعذر معالجة طلبك في الوقت الحالي',
+        `حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`
+      ),
       { parse_mode: 'MarkdownV2' }
     );
   }
