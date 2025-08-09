@@ -650,11 +650,11 @@ export async function addAnnouncement(content, sentToGroup = false) {
 }
 
 // Assignment functions
-export async function addAssignment(courseId, title, question, correctAnswer, deadline) {
+export async function addAssignment(courseId, title, question, correctAnswer, dueDate) {
   try {
     const result = await db.run(
-      'INSERT INTO assignments (course_id, title, question, correct_answer, deadline) VALUES (?, ?, ?, ?, ?)',
-      [courseId, title, question, correctAnswer, deadline]
+      'INSERT INTO assignments (course_id, title, question, correct_answer, due_date) VALUES (?, ?, ?, ?, ?)',
+      [courseId, title, question, correctAnswer, dueDate]
     );
     return result.lastID;
   } catch (error) {
@@ -665,7 +665,7 @@ export async function addAssignment(courseId, title, question, correctAnswer, de
 
 export async function updateAssignment(assignmentId, field, value) {
   try {
-    const validFields = ['title', 'question', 'correct_answer', 'deadline'];
+    const validFields = ['title', 'question', 'correct_answer', 'due_date'];
     if (!validFields.includes(field)) {
       throw new Error('حقل غير صالح');
     }
