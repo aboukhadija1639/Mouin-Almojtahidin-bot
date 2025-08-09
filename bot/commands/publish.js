@@ -1,5 +1,7 @@
 import { addAnnouncement, getVerifiedUsersWithReminders } from '../utils/database.js';
 import { config } from '../../config.js';
+import { templates, announcementTemplates } from '../utils/messageTemplates.js';
+import { escapeMarkdownV2, bold, italic, code } from '../utils/escapeMarkdownV2.js';
 
 export async function handlePublish(ctx) {
   try {
@@ -9,10 +11,8 @@ export async function handlePublish(ctx) {
     // Check if user is admin
     if (!config.admin.userIds.includes(userId)) {
       await ctx.reply(
-        `🚫 *غير مسموح*\n` +
-        `هذا الأمر مخصص للمدراء فقط.\n` +
-        `للمساعدة، تواصل مع ${config.admin.supportChannel}`,
-        { parse_mode: 'Markdown' }
+        templates.accessDenied('هذا الأمر مخصص للمدراء فقط', config.admin.supportChannel),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -21,11 +21,12 @@ export async function handlePublish(ctx) {
     const args = messageText.split(' ');
     if (args.length < 2) {
       await ctx.reply(
-        `📢 *كيفية نشر إعلان*\n` +
-        `الصيغة الصحيحة: \`/publish نص_الإعلان\`\n` +
-        `مثال: \`/publish مرحباً بكم في الدرس الجديد\`\n` +
-        `💡 سيتم إرسال الإعلان للمجموعة وللمستخدمين المفعلين.`,
-        { parse_mode: 'Markdown' }
+        templates.info(
+          'كيفية نشر إعلان',
+          `الصيغة الصحيحة: ${code('/publish نص_الإعلان')}\n\nمثال: ${code('/publish مرحباً بكم في الدرس الجديد')}`,
+          'سيتم إرسال الإعلان للمجموعة وللمستخدمين المفعلين'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
@@ -33,20 +34,49 @@ export async function handlePublish(ctx) {
     // Get announcement content (everything after /publish)
     const announcementContent = messageText.substring(messageText.indexOf(' ') + 1);
 
+    // Validate announcement content
+    if (!announcementContent || announcementContent.trim().length === 0) {
+      await ctx.reply(
+        templates.error(
+          'نص الإعلان فارغ',
+          'يرجى إضافة محتوى للإعلان',
+          `مثال: ${code('/publish مرحباً بكم في الدرس الجديد')}`
+        ),
+        { parse_mode: 'MarkdownV2' }
+      );
+      return;
+    }
+
+    // Validate announcement length
+    if (announcementContent.length > 1000) {
+      await ctx.reply(
+        templates.error(
+          'نص الإعلان طويل جداً',
+          `يجب أن يكون نص الإعلان أقل من 1000 حرف. النص الحالي: ${announcementContent.length} حرف`,
+          'اجعل الإعلان مختصراً وواضحاً'
+        ),
+        { parse_mode: 'MarkdownV2' }
+      );
+      return;
+    }
+
     // Save announcement to database
     const announcementId = await addAnnouncement(announcementContent, true);
     
     if (!announcementId) {
       await ctx.reply(
-        `❌ *فشل في حفظ الإعلان*\n` +
-        `حدث خطأ تقني، حاول مرة أخرى.`,
-        { parse_mode: 'Markdown' }
+        templates.error(
+          'فشل في حفظ الإعلان',
+          'حدث خطأ تقني أثناء حفظ الإعلان',
+          'حاول مرة أخرى أو تواصل مع الدعم الفني'
+        ),
+        { parse_mode: 'MarkdownV2' }
       );
       return;
     }
 
-    // Format announcement message
-    const announcementMessage = `📢 *إعلان جديد*\n${announcementContent}\n━━━━━━━━━━━━━━━━━━━━\n🤖 بوت معين المجتهدين`;
+    // Format announcement message using professional template
+    const announcementMessage = announcementTemplates.toUsers(announcementContent);
 
     let successCount = 0;
     let failCount = 0;
@@ -55,7 +85,7 @@ export async function handlePublish(ctx) {
     if (config.admin.groupId) {
       try {
         await ctx.telegram.sendMessage(config.admin.groupId, announcementMessage, { 
-          parse_mode: 'Markdown',
+          parse_mode: 'MarkdownV2',
           disable_web_page_preview: true 
         });
         successCount++;
@@ -74,7 +104,7 @@ export async function handlePublish(ctx) {
       
       try {
         await ctx.telegram.sendMessage(userIdToNotify, announcementMessage, { 
-          parse_mode: 'Markdown',
+          parse_mode: 'MarkdownV2',
           disable_web_page_preview: true 
         });
         successCount++;
@@ -87,22 +117,28 @@ export async function handlePublish(ctx) {
       }
     }
 
-    // Send confirmation to admin
-    let confirmationMessage = `✅ *تم نشر الإعلان بنجاح*\n`;
-    confirmationMessage += `📊 *تفاصيل الإرسال:*\n`;
-    confirmationMessage += `• تم الإرسال بنجاح: ${successCount}\n`;
-    if (failCount > 0) {
-      confirmationMessage += `• فشل في الإرسال: ${failCount}\n`;
-    }
-    confirmationMessage += `\n📝 *محتوى الإعلان:*\n${announcementContent}`;
-
-    await ctx.reply(confirmationMessage, { 
-      parse_mode: 'Markdown',
-      disable_web_page_preview: true 
-    });
+    // Send professional confirmation to admin
+    await ctx.reply(
+      announcementTemplates.published({
+        content: announcementContent,
+        successCount: successCount,
+        failCount: failCount
+      }),
+      { 
+        parse_mode: 'MarkdownV2',
+        disable_web_page_preview: true 
+      }
+    );
 
   } catch (error) {
     console.error('خطأ في أمر /publish:', error);
-    await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`);
+    await ctx.reply(
+      templates.error(
+        'حدث خطأ غير متوقع',
+        'تعذر معالجة طلبك في الوقت الحالي',
+        `حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`
+      ),
+      { parse_mode: 'MarkdownV2' }
+    );
   }
 }
