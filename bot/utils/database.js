@@ -411,6 +411,16 @@ async function createTables() {
       )
     `);
 
+    // NEW: Courses table (missing previously, required by several queries)
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS courses (
+        course_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Lessons table
     await db.exec(`
       CREATE TABLE IF NOT EXISTS lessons (

@@ -8,8 +8,8 @@ export async function handleSubmit(ctx) {
     const userId = ctx.from.id;
 
     // Check if user is verified
-    const user = await isUserVerified(userId);
-    if (!user || !user.verified) {
+    const verified = await isUserVerified(userId);
+    if (!verified) {
       await ctx.reply(
         escapeMarkdownV2(
           `🔒 *حسابك غير مفعل*\n` +
