@@ -1,5 +1,5 @@
 // bot/commands/start.js
-import { addUser, isUserVerified } from '../utils/database.js';
+import { addUser, isUserVerified, getUserInfo } from '../utils/database.js';
 import { userCacheUtil, warmCache } from '../utils/cache.js';
 import { config } from '../../config.js';
 import { escapeMarkdownV2, bold, italic, code } from '../utils/escapeMarkdownV2.js';
@@ -35,8 +35,7 @@ export async function handleStart(ctx) {
       await addUser(userId, username, firstName);
       
       // Check verification status
-      const userVerificationData = await isUserVerified(userId);
-      verified = userVerificationData?.verified || false;
+      verified = await isUserVerified(userId);
       
       // Cache the user data for future requests
       userData = { 
@@ -54,7 +53,7 @@ export async function handleStart(ctx) {
     // Pre-warm cache with user courses and assignments if verified
     if (verified) {
       // Don't await these to avoid blocking the response
-      warmCache.preloadUserData(userId, { isUserVerified }).catch(console.error);
+      warmCache.preloadUserData(userId, { getUserInfo }).catch(console.error);
     }
 
     // Build response message with professional formatting
