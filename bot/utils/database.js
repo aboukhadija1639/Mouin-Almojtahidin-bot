@@ -85,37 +85,7 @@ export function ensureDataDirectoryExists() {
 //   }
 // }
 
-// Enhanced isUserVerified with caching
-// export async function isUserVerified(userId) {
-//   const startTime = Date.now();
-  
-//   try {
-//     // Check cache first
-//     const cachedUser = userCacheUtil.get(userId);
-//     if (cachedUser) {
-//       trackQuery('isUserVerified', startTime, true);
-//       return { verified: cachedUser.verified || false };
-//     }
-    
-//     // Query database
-//     const user = await db.get('SELECT verified FROM users WHERE user_id = ?', [userId]);
-    
-//     if (user) {
-//       // Cache minimal user data
-//       const userData = { id: userId, verified: user.verified };
-//       userCacheUtil.set(userId, userData, 300);
-//       trackQuery('isUserVerified', startTime, false);
-//       return { verified: user.verified || false };
-//     } else {
-//       trackQuery('isUserVerified', startTime, false);
-//       return { verified: false };
-//     }
-//   } catch (error) {
-//     console.error('خطأ في فحص تفعيل المستخدم:', error);
-//     trackQuery('isUserVerified', startTime, false);
-//     return { verified: false };
-//   }
-// }
+
 
 // Enhanced getCourses with caching
 // export async function getCourses() {
@@ -240,7 +210,7 @@ export async function updateUserVerification(userId, verified) {
   
   try {
     await db.run(
-      'UPDATE users SET verified = ? WHERE user_id = ?',
+      'UPDATE users SET is_verified = ? WHERE user_id = ?',
       [verified, userId]
     );
     
