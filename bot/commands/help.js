@@ -1,91 +1,181 @@
 // bot/commands/help.js
-import { isUserVerified } from '../utils/database.js';
+import { getUserLanguage } from '../utils/database.js';
 import { config } from '../../config.js';
-import { escapeMarkdownV2, bold, italic, code } from '../utils/escapeMarkdownV2.js';
+import { escapeMarkdownV2, bold, code } from '../utils/escapeMarkdownV2.js';
+import { success, error, info } from '../utils/responseTemplates.js';
+import { logError } from '../middlewares/logger.js';
 
 export async function handleHelp(ctx) {
   try {
-    const userId = ctx.from.id;
-    const userData = await isUserVerified(userId);
-    const isVerified = userData?.verified || false;
-    const isAdmin = config.admin.userIds.includes(userId);
+    const userId = ctx.from?.id;
 
-    let message = `🆘 ${bold('مساعدة بوت معين المجتهدين')}\n\n`;
+    // Get user language
+    const userLanguage = await getUserLanguage(userId).catch(() => 'ar') || 'ar';
+
+    // Define bilingual help content
+    const helpContent = {
+      ar: {
+        title: 'دليل المساعدة الشامل',
+        publicCommands: 'الأوامر العامة:',
+        userCommands: 'أوامر المستخدم:',
+        adminCommands: 'أوامر المدير:',
+        commands: {
+          start: 'بدء استخدام البوت',
+          verify: 'تفعيل الحساب',
+          help: 'عرض هذا الدليل',
+          faq: 'الأسئلة الشائعة',
+          profile: 'عرض الملف الشخصي',
+          courses: 'قائمة الدروس',
+          assignments: 'قائمة الواجبات',
+          attendance: 'تسجيل الحضور',
+          reminders: 'إدارة التذكيرات',
+          submit: 'إرسال إجابة واجب',
+          addreminder: 'إضافة تذكير مخصص',
+          listreminders: 'عرض التذكيرات',
+          deletereminder: 'حذف تذكير',
+          upcominglessons: 'الدروس القادمة',
+          feedback: 'إرسال تغذية راجعة',
+          reportbug: 'الإبلاغ عن مشكلة',
+          settings: 'إعدادات المستخدم',
+          health: 'حالة النظام',
+          stats: 'عرض الإحصائيات',
+          publish: 'نشر إعلان',
+          addassignment: 'إضافة واجب',
+          updateassignment: 'تحديث واجب',
+          deleteassignment: 'حذف واجب',
+          addcourse: 'إضافة كورس',
+          updatecourse: 'تحديث كورس',
+          deletecourse: 'حذف كورس',
+          export: 'تصدير البيانات',
+          viewfeedback: 'عرض التغذية الراجعة',
+          broadcast: 'إرسال رسالة جماعية'
+        },
+        usage: 'الاستخدام:',
+        examples: 'أمثلة:',
+        support: 'للدعم والمساعدة:',
+        moreInfo: 'لمزيد من المعلومات حول أمر معين، استخدم',
+        withCommand: 'مع الأمر'
+      },
+      en: {
+        title: 'Comprehensive Help Guide',
+        publicCommands: 'Public Commands:',
+        userCommands: 'User Commands:',
+        adminCommands: 'Admin Commands:',
+        commands: {
+          start: 'Start using the bot',
+          verify: 'Activate account',
+          help: 'Show this guide',
+          faq: 'Frequently asked questions',
+          profile: 'View profile',
+          courses: 'List courses',
+          assignments: 'List assignments',
+          attendance: 'Mark attendance',
+          reminders: 'Manage reminders',
+          submit: 'Submit assignment answer',
+          addreminder: 'Add custom reminder',
+          listreminders: 'List reminders',
+          deletereminder: 'Delete reminder',
+          upcominglessons: 'Upcoming lessons',
+          feedback: 'Send feedback',
+          reportbug: 'Report a problem',
+          settings: 'User settings',
+          health: 'System status',
+          stats: 'View statistics',
+          publish: 'Publish announcement',
+          addassignment: 'Add assignment',
+          updateassignment: 'Update assignment',
+          deleteassignment: 'Delete assignment',
+          addcourse: 'Add course',
+          updatecourse: 'Update course',
+          deletecourse: 'Delete course',
+          export: 'Export data',
+          viewfeedback: 'View feedback',
+          broadcast: 'Send broadcast message'
+        },
+        usage: 'Usage:',
+        examples: 'Examples:',
+        support: 'For support and assistance:',
+        moreInfo: 'For more information about a specific command, use',
+        withCommand: 'with the command'
+      }
+    };
+
+    const content = helpContent[userLanguage] || helpContent.ar;
+
+    let message = `🆘 ${bold(content.title)}\n\n`;
     message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-    // Basic commands for all users
-    message += `📋 ${bold('الأوامر الأساسية:')}\n\n`;
-    message += `• ${code('/start')} \\- بدء استخدام البوت\n`;
-    message += `• ${code('/help')} \\- عرض هذه المساعدة\n`;
-    message += `• ${code('/faq')} \\- الأسئلة الشائعة\n`;
-    message += `• ${code('/profile')} \\- عرض ملفك الشخصي\n`;
-    
-    if (!isVerified) {
-      message += `• ${code('/verify <كود>')} \\- تفعيل حسابك\n`;
-    }
-    
-    message += `\n`;
+    // Public Commands
+    message += `🌐 ${bold(content.publicCommands)}\n`;
+    message += `• ${code('/start')} \\- ${escapeMarkdownV2(content.commands.start)}\n`;
+    message += `• ${code('/verify')} \\- ${escapeMarkdownV2(content.commands.verify)}\n`;
+    message += `• ${code('/help')} \\- ${escapeMarkdownV2(content.commands.help)}\n`;
+    message += `• ${code('/faq')} \\- ${escapeMarkdownV2(content.commands.faq)}\n\n`;
 
-    // Commands for verified users
-    if (isVerified) {
-      message += `✅ ${bold('أوامر المستخدمين المفعلين:')}\n\n`;
-      message += `• ${code('/courses')} \\- عرض الدورات المتاحة\n`;
-      message += `• ${code('/assignments')} \\- عرض الواجبات\n`;
-      message += `• ${code('/submit')} \\- إرسال إجابة واجب\n`;
-      message += `• ${code('/attendance')} \\- تسجيل الحضور\n`;
-      message += `• ${code('/stats')} \\- إحصائياتك الشخصية\n`;
-      message += `• ${code('/settings')} \\- إعدادات الحساب\n\n`;
+    // User Commands
+    message += `👤 ${bold(content.userCommands)}\n`;
+    message += `• ${code('/profile')} \\- ${escapeMarkdownV2(content.commands.profile)}\n`;
+    message += `• ${code('/courses')} \\- ${escapeMarkdownV2(content.commands.courses)}\n`;
+    message += `• ${code('/assignments')} \\- ${escapeMarkdownV2(content.commands.assignments)}\n`;
+    message += `• ${code('/attendance')} \\- ${escapeMarkdownV2(content.commands.attendance)}\n`;
+    message += `• ${code('/submit')} \\- ${escapeMarkdownV2(content.commands.submit)}\n`;
+    message += `• ${code('/reminders')} \\- ${escapeMarkdownV2(content.commands.reminders)}\n`;
+    message += `• ${code('/addreminder')} \\- ${escapeMarkdownV2(content.commands.addreminder)}\n`;
+    message += `• ${code('/listreminders')} \\- ${escapeMarkdownV2(content.commands.listreminders)}\n`;
+    message += `• ${code('/deletereminder')} \\- ${escapeMarkdownV2(content.commands.deletereminder)}\n`;
+    message += `• ${code('/upcominglessons')} \\- ${escapeMarkdownV2(content.commands.upcominglessons)}\n`;
+    message += `• ${code('/feedback')} \\- ${escapeMarkdownV2(content.commands.feedback)}\n`;
+    message += `• ${code('/reportbug')} \\- ${escapeMarkdownV2(content.commands.reportbug)}\n`;
+    message += `• ${code('/settings')} \\- ${escapeMarkdownV2(content.commands.settings)}\n`;
+    message += `• ${code('/health')} \\- ${escapeMarkdownV2(content.commands.health)}\n\n`;
 
-      message += `⏰ ${bold('أوامر التذكيرات:')}\n\n`;
-      message += `• ${code('/addreminder')} \\- إضافة تذكير شخصي\n`;
-      message += `• ${code('/listreminders')} \\- عرض تذكيراتك\n`;
-      message += `• ${code('/deletereminder')} \\- حذف تذكير\n`;
-      message += `• ${code('/upcominglessons')} \\- الدروس القادمة\n\n`;
-    }
+    // Admin Commands
+    message += `⚙️ ${bold(content.adminCommands)}\n`;
+    message += `• ${code('/stats')} \\- ${escapeMarkdownV2(content.commands.stats)}\n`;
+    message += `• ${code('/publish')} \\- ${escapeMarkdownV2(content.commands.publish)}\n`;
+    message += `• ${code('/broadcast')} \\- ${escapeMarkdownV2(content.commands.broadcast)}\n`;
+    message += `• ${code('/export')} \\- ${escapeMarkdownV2(content.commands.export)}\n`;
+    message += `• ${code('/viewfeedback')} \\- ${escapeMarkdownV2(content.commands.viewfeedback)}\n`;
+    message += `• ${code('/addassignment')} \\- ${escapeMarkdownV2(content.commands.addassignment)}\n`;
+    message += `• ${code('/updateassignment')} \\- ${escapeMarkdownV2(content.commands.updateassignment)}\n`;
+    message += `• ${code('/deleteassignment')} \\- ${escapeMarkdownV2(content.commands.deleteassignment)}\n`;
+    message += `• ${code('/addcourse')} \\- ${escapeMarkdownV2(content.commands.addcourse)}\n`;
+    message += `• ${code('/updatecourse')} \\- ${escapeMarkdownV2(content.commands.updatecourse)}\n`;
+    message += `• ${code('/deletecourse')} \\- ${escapeMarkdownV2(content.commands.deletecourse)}\n\n`;
 
-    // Admin commands
-    if (isAdmin) {
-      message += `👑 ${bold('أوامر الإدارة:')}\n\n`;
-      message += `• ${code('/broadcast')} \\- إرسال رسالة جماعية\n`;
-      message += `• ${code('/courseadmin')} \\- إدارة الدورات\n`;
-      message += `• ${code('/export')} \\- تصدير البيانات\n`;
-      message += `• ${code('/publish')} \\- نشر إعلان\n\n`;
-    }
-
-    // Support and feedback
-    message += `🛠️ ${bold('الدعم والتطوير:')}\n\n`;
-    message += `• ${code('/reportbug')} \\- الإبلاغ عن مشكلة\n`;
-    message += `• ${code('/feedback')} \\- إرسال اقتراح أو رأي\n\n`;
+    // Examples
+    message += `💡 ${bold(content.examples)}\n`;
+    message += `• ${code('/verify ABC123')}\n`;
+    message += `• ${code('/attendance 1')}\n`;
+    message += `• ${code('/submit 1 "my answer"')}\n`;
+    message += `• ${code('/addreminder "2024-01-20 10:00" "درس مهم"')}\n\n`;
 
     message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-    
-    if (!isVerified) {
-      message += `🔒 ${bold('تنبيه:')}\n`;
-      message += `بعض الأوامر تتطلب تفعيل الحساب أولاً\\.\n`;
-      message += `استخدم ${code('/verify <كود>')} للتفعيل\\.\n\n`;
-    }
+    message += `💬 ${bold(content.support)} ${escapeMarkdownV2(config.admin.supportChannel)}`;
 
-    message += `💡 ${bold('نصائح مهمة:')}\n`;
-    message += `• استخدم الأوامر بالصيغة الصحيحة\n`;
-    message += `• تأكد من تفعيل التذكيرات في الإعدادات\n`;
-    message += `• راجع الأسئلة الشائعة للمساعدة السريعة\n\n`;
-
-    message += `📞 ${bold('تحتاج مساعدة إضافية؟')}\n`;
-    message += `تواصل معنا: ${escapeMarkdownV2(config.admin.supportChannel)}\n\n`;
-    
-    message += `🤖 ${italic('بوت معين المجتهدين \\- نسخة 2\\.0')}`;
-
-    await ctx.reply(message, {
-      parse_mode: 'MarkdownV2',
-      disable_web_page_preview: true
-    });
-
-  } catch (error) {
-    console.error('خطأ في أمر /help:', error);
     await ctx.reply(
-      `❌ ${bold('حدث خطأ أثناء عرض المساعدة')}\n\n` +
-      `حاول مرة أخرى أو تواصل مع ${escapeMarkdownV2(config.admin.supportChannel)}`,
-      { parse_mode: 'MarkdownV2' }
+      message,
+      { 
+        parse_mode: 'MarkdownV2',
+        disable_web_page_preview: true
+      }
+    );
+
+  } catch (err) {
+    logError(err, 'COMMAND_HELP');
+    
+    const userLanguage = await getUserLanguage(ctx.from?.id).catch(() => 'ar') || 'ar';
+    const errorMessages = {
+      ar: 'حدث خطأ، حاول مرة أخرى أو تواصل مع الدعم',
+      en: 'An error occurred, try again or contact support'
+    };
+
+    await ctx.reply(
+      error(errorMessages[userLanguage] || errorMessages.ar),
+      { 
+        parse_mode: 'MarkdownV2',
+        disable_web_page_preview: true
+      }
     );
   }
 }

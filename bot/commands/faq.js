@@ -1,62 +1,128 @@
 // bot/commands/faq.js
+import { getUserLanguage } from '../utils/database.js';
 import { config } from '../../config.js';
-import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
+import { escapeMarkdownV2, bold, code } from '../utils/escapeMarkdownV2.js';
+import { success, error, info } from '../utils/responseTemplates.js';
+import { logError } from '../middlewares/logger.js';
 
 export async function handleFaq(ctx) {
   try {
-    console.log('[FAQ] Starting /faq command handler for user:', ctx.from.id);
-    const faqs = config.faq || [
-      {
-        question: 'كيف أسجل في الكورس؟',
-        answer: 'استخدم /verify كود_التفعيل من المدرب\\.',
-      },
-      {
-        question: 'كيف أسجل الحضور؟',
-        answer: 'استخدم /attendance رقم_الدرس \\(مثال: /attendance 1\\)\\.',
-      },
-      {
-        question: 'كيف أرى ملفي؟',
-        answer: 'استخدم /profile \\- عرض معلوماتك\\.',
-      },
-    ];
-    console.log('[FAQ] Retrieved FAQs:', faqs);
+    const userId = ctx.from?.id;
 
-    let message = `❓ *${escapeMarkdownV2('الأسئلة الشائعة')}*\n\n`;
-    message += `${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━')}\n\n`;
-    faqs.forEach((faq, index) => {
-      message += `${index + 1}\\. *${escapeMarkdownV2(faq.question)}*\n`;
-      message += `${escapeMarkdownV2(faq.answer)}\n\n`;
-    });
-    message += `${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━')}\n`;
-    message += `💡 *${escapeMarkdownV2('لم تجد إجابة؟')}* ${escapeMarkdownV2('تواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)}`;
+    // Get user language
+    const userLanguage = await getUserLanguage(userId).catch(() => 'ar') || 'ar';
 
-    console.log('[FAQ] Sending response to Telegram:', message);
-    await ctx.reply(message, {
-      parse_mode: 'MarkdownV2',
-      disable_web_page_preview: true,
+    // Define bilingual FAQ content
+    const faqContent = {
+      ar: {
+        title: 'الأسئلة الشائعة',
+        questions: [
+          {
+            q: 'كيف أفعل حسابي؟',
+            a: `استخدم الأمر ${code('/verify كود_التفعيل')} واحصل على الكود من ${escapeMarkdownV2(config.admin.supportChannel)}`
+          },
+          {
+            q: 'كيف أسجل الحضور؟',
+            a: `استخدم الأمر ${code('/attendance رقم_الدرس')} مع رقم الدرس المعطى من المدرب`
+          },
+          {
+            q: 'كيف أرسل إجابة واجب؟',
+            a: `استخدم الأمر ${code('/submit رقم_الواجب إجابتك')} لإرسال إجابتك`
+          },
+          {
+            q: 'كيف أعرض ملفي الشخصي؟',
+            a: `استخدم الأمر ${code('/profile')} لعرض معلوماتك وإحصائياتك`
+          },
+          {
+            q: 'كيف أغير إعداداتي؟',
+            a: `استخدم الأمر ${code('/settings')} لتغيير اللغة والتذكيرات`
+          },
+          {
+            q: 'كيف أضيف تذكير مخصص؟',
+            a: `استخدم الأمر ${code('/addreminder')} لإضافة تذكير شخصي`
+          },
+          {
+            q: 'أين أجد قائمة جميع الأوامر؟',
+            a: `استخدم الأمر ${code('/help')} للحصول على دليل شامل لجميع الأوامر`
+          }
+        ],
+        support: 'للدعم والمساعدة:',
+        moreHelp: 'لمزيد من المساعدة، استخدم'
+      },
+      en: {
+        title: 'Frequently Asked Questions',
+        questions: [
+          {
+            q: 'How do I activate my account?',
+            a: `Use the command ${code('/verify activation_code')} and get the code from ${escapeMarkdownV2(config.admin.supportChannel)}`
+          },
+          {
+            q: 'How do I mark attendance?',
+            a: `Use the command ${code('/attendance lesson_number')} with the lesson number given by the instructor`
+          },
+          {
+            q: 'How do I submit an assignment answer?',
+            a: `Use the command ${code('/submit assignment_number your_answer')} to submit your answer`
+          },
+          {
+            q: 'How do I view my profile?',
+            a: `Use the command ${code('/profile')} to view your information and statistics`
+          },
+          {
+            q: 'How do I change my settings?',
+            a: `Use the command ${code('/settings')} to change language and reminders`
+          },
+          {
+            q: 'How do I add a custom reminder?',
+            a: `Use the command ${code('/addreminder')} to add a personal reminder`
+          },
+          {
+            q: 'Where can I find a list of all commands?',
+            a: `Use the command ${code('/help')} to get a comprehensive guide of all commands`
+          }
+        ],
+        support: 'For support and assistance:',
+        moreHelp: 'For more help, use'
+      }
+    };
+
+    const content = faqContent[userLanguage] || faqContent.ar;
+
+    let message = `❓ ${bold(content.title)}\n\n`;
+    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+    content.questions.forEach((item, index) => {
+      message += `${bold(`${index + 1}. ${escapeMarkdownV2(item.q)}`)}\n`;
+      message += `${item.a}\n\n`;
     });
-    console.log('[FAQ] Response sent successfully for user:', ctx.from.id);
-  } catch (error) {
-    console.error('[FAQ] Error in /faq command:', {
-      error: error.message,
-      stack: error.stack,
-      userId: ctx.from?.id,
-      messageText: ctx.message?.text,
-    });
-    try {
-      const fs = await import('fs');
-      fs.appendFileSync(
-        './data/error.log',
-        `[FAQ] ${new Date().toISOString()}\n${error.stack || error}\n`
-      );
-    } catch (e) {
-      console.error('[FAQ] Failed to write to error.log:', e);
-    }
+
+    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    message += `💬 ${bold(content.support)} ${escapeMarkdownV2(config.admin.supportChannel)}\n`;
+    message += `🆘 ${content.moreHelp} ${code('/help')}`;
+
     await ctx.reply(
-      escapeMarkdownV2(
-        `❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`
-      ),
-      { parse_mode: 'MarkdownV2' }
+      message,
+      { 
+        parse_mode: 'MarkdownV2',
+        disable_web_page_preview: true
+      }
+    );
+
+  } catch (err) {
+    logError(err, 'COMMAND_FAQ');
+    
+    const userLanguage = await getUserLanguage(ctx.from?.id).catch(() => 'ar') || 'ar';
+    const errorMessages = {
+      ar: 'حدث خطأ، حاول مرة أخرى أو تواصل مع الدعم',
+      en: 'An error occurred, try again or contact support'
+    };
+
+    await ctx.reply(
+      error(errorMessages[userLanguage] || errorMessages.ar),
+      { 
+        parse_mode: 'MarkdownV2',
+        disable_web_page_preview: true
+      }
     );
   }
 }

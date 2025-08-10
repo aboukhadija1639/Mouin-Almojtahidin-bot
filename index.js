@@ -453,35 +453,20 @@ function registerCommands(bot) {
     
     if (!knownCommands.includes(command)) {
       console.log(`Unknown command received: ${command}`);
+      
+      const { escapeMarkdownV2, bold, code } = await import('./bot/utils/escapeMarkdownV2.js');
+      const { error } = await import('./bot/utils/responseTemplates.js');
+      
       await ctx.reply(
-        `❓ *أمر غير معروف*\\n\\n` +
-        `الأوامر المتاحة:\\n\\n` +
-        `🌐 *الأوامر العامة:*\\n` +
-        `• \`/start\` \\- بدء استخدام البوت\\n` +
-        `• \`/verify\` \\- تفعيل الحساب\\n` +
-        `• \`/help\` \\- دليل المساعدة الشامل\\n` +
-        `• \`/faq\` \\- الأسئلة الشائعة\\n\\n` +
-        `👤 *أوامر المستخدم:*\\n` +
-        `• \`/profile\` \\- عرض الملف الشخصي\\n` +
-        `• \`/courses\` \\- قائمة الدروس\\n` +
-        `• \`/assignments\` \\- قائمة الواجبات\\n` +
-        `• \`/attendance\` \\- تسجيل الحضور\\n` +
-        `• \`/reminders\` \\- تبديل التذكيرات\\n` +
-        `• \`/addreminder\` \\- إضافة تذكير مخصص\\n` +
-        `• \`/submit\` \\- إرسال إجابة واجب\\n` +
-        `• \`/feedback\` \\- إرسال تغذية راجعة\\n` +
-        `• \`/settings\` \\- إعدادات المستخدم\\n` +
-        `• \`/health\` \\- حالة النظام\\n\\n` +
-        `⚙️ *أوامر المدير:*\\n` +
-        `• \`/stats\` \\- عرض الإحصائيات\\n` +
-        `• \`/publish\` \\- نشر إعلان\\n` +
-        `• \`/export\` \\- تصدير البيانات\\n` +
-        `• \`/viewfeedback\` \\- عرض التغذية الراجعة\\n` +
-        `• إدارة الواجبات \\(add/update/delete\\)\\n` +
-        `• \`/deletecourse\` \\- حذف الكورس\\n\\n` +
-        `💡 استخدم \`/help\` للحصول على دليل مفصل\\n\\n` +
-        `للمساعدة: ${config.admin.supportChannel.replace(/@/g, '\\@')}`,
-        { parse_mode: 'MarkdownV2' }
+        error(
+          `أمر غير معروف\n\n` +
+          `استخدم ${code('/help')} للحصول على قائمة جميع الأوامر المتاحة\n\n` +
+          `للمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}`
+        ),
+        { 
+          parse_mode: 'MarkdownV2',
+          disable_web_page_preview: true
+        }
       );
     }
   });

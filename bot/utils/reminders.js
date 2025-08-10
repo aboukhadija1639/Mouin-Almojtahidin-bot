@@ -98,80 +98,47 @@ async function sendLessonReminder(lesson, timeBefore) {
     const verifiedUsers = await getVerifiedUsersWithReminders();
     
     // Create reminder message with proper MarkdownV2 escaping
-    const escapedTitle = lesson.title.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
-    const escapedDate = lesson.date.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
-    const escapedTime = lesson.time.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
-    const escapedTimeBefore = timeBefore.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
-    const escapedZoomLink = (lesson.zoom_link || config.zoom.fullLink).replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
+    const { escapeMarkdownV2, bold } = await import('./escapeMarkdownV2.js');
+    const escapedTitle = escapeMarkdownV2(lesson.title || 'درس');
+    const escapedDate = escapeMarkdownV2(lesson.date || '');
+    const escapedTime = escapeMarkdownV2(lesson.time || '');
+    const escapedTimeBefore = escapeMarkdownV2(timeBefore);
     
-    const reminderMessage = `⏰ *تذكير بالدرس*\\n\\n` +
-      `📚 *عنوان الدرس:* ${escapedTitle}\\n` +
-      `📅 *التاريخ:* ${escapedDate}\\n` +
-      `⏰ *الوقت:* ${escapedTime}\\n` +
-      `🔔 *يبدأ خلال:* ${escapedTimeBefore}\\n\\n` +
-      `🔗 *رابط الدرس:* [انقر هنا](${lesson.zoom_link || config.zoom.fullLink})\\n\\n` +
-      `📋 لا تنسَ تسجيل حضورك باستخدام /attendance بعد الدرس\\n\\n` +
-      `━━━━━━━━━━━━━━━━━━━━\\n` +
-      `🤖 بوت معين المجتهدين`;
+    const reminderMessage = 
+      `⏰ ${bold('تذكير بالدرس')}\n\n` +
+      `📚 ${bold('الدرس:')} ${escapedTitle}\n` +
+      `📅 ${bold('التاريخ:')} ${escapedDate}\n` +
+      `🕐 ${bold('الوقت:')} ${escapedTime}\n` +
+      `⌛ ${bold('يبدأ خلال:')} ${escapedTimeBefore}\n\n` +
+      `${lesson.zoom_link ? `🔗 ${bold('رابط الزوم:')} ${escapeMarkdownV2(lesson.zoom_link)}\n\n` : ''}` +
+      `📝 ${escapeMarkdownV2('لا تنسَ حضور الدرس وتسجيل حضورك!')}\n` +
+      `📋 ${escapeMarkdownV2('استخدم')} /attendance ${lesson.lesson_id || lesson.id || ''} ${escapeMarkdownV2('لتسجيل الحضور')}`;
 
-    let successCount = 0;
-    let failCount = 0;
-
-    // Send to main group with mentions
-    if (config.admin.groupId && verifiedUsers.length > 0) {
-      try {
-        const mentions = verifiedUsers.map(userId => `[‌](tg://user?id=${userId})`).join('');
-        const groupMessage = `${reminderMessage}\n\n${mentions}`;
-        
-        await bot.telegram.sendMessage(config.admin.groupId, groupMessage, { 
-          parse_mode: 'MarkdownV2',
-          disable_web_page_preview: true 
-        });
-        successCount++;
-      } catch (groupError) {
-        logError(groupError, 'GROUP_REMINDER');
-        failCount++;
-      }
-    }
-
-    // Send private messages to verified users
+    // Send reminder to all eligible users
+    let sentCount = 0;
+    let errorCount = 0;
+    
     for (const userId of verifiedUsers) {
       try {
-        await bot.telegram.sendMessage(userId, reminderMessage, { 
+        await bot.telegram.sendMessage(userId, reminderMessage, {
           parse_mode: 'MarkdownV2',
-          disable_web_page_preview: true 
+          disable_web_page_preview: true
         });
-        successCount++;
+        sentCount++;
         
-        // Add small delay to avoid rate limiting
+        // Add small delay to avoid hitting rate limits
         await new Promise(resolve => setTimeout(resolve, 100));
       } catch (userError) {
-        logError(userError, `USER_REMINDER_${userId}`);
-        failCount++;
+        errorCount++;
+        logError(userError, `SEND_REMINDER_USER_${userId}`);
       }
     }
 
-    logActivity(`تم إرسال تذكير الدرس ${lesson.title} (${timeBefore}): نجح ${successCount}، فشل ${failCount}`);
-
-    // Notify admin about reminder sent
-          if (config.admin.chatId) {
-        try {
-          const escapedLessonTitle = lesson.title.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
-          const escapedTimeBefore = timeBefore.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
-          
-          const adminMessage = `📤 *تم إرسال تذكير الدرس*\\n\\n` +
-            `📚 الدرس: ${escapedLessonTitle}\\n` +
-            `⏰ التوقيت: ${escapedTimeBefore} قبل البداية\\n` +
-            `✅ نجح: ${successCount}\\n` +
-            `❌ فشل: ${failCount}`;
-          
-          await bot.telegram.sendMessage(config.admin.chatId, adminMessage, { parse_mode: 'MarkdownV2' });
-        } catch (adminError) {
-          logError(adminError, 'ADMIN_REMINDER_NOTIFICATION');
-        }
-      }
+    logActivity(
+      `تم إرسال تذكير الدرس "${lesson.title}" إلى ${sentCount} مستخدم. أخطاء: ${errorCount}`
+    );
   } catch (error) {
-    logError(error, 'SEND_REMINDER');
+    logError(error, 'SEND_LESSON_REMINDER');
   }
 }
 
