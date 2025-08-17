@@ -76,10 +76,7 @@ export async function handleCourses(ctx) {
     });
 
     const duration = Date.now() - startTime;
-    console.log(`[COURSES] Command completed in ${duration}ms`, { 
-      lessonsCount: allLessons.length,
-      userId: ctx.from?.id 
-    });
+    console.log(`[COURSES] Command completed in ${duration}ms`);
 
   } catch (error) {
     console.error('[COURSES] Error handling courses command:', {
@@ -88,9 +85,10 @@ export async function handleCourses(ctx) {
       user: ctx.from?.id
     });
 
+    // Send error message to user
     await ctx.reply(
-      `❌ ${bold('حدث خطأ في تحميل الدروس')}\n\n` +
-      `${escapeMarkdownV2('عذراً، حدث خطأ أثناء جلب قائمة الدروس.')}\n` +
+      `❌ ${bold('حدث خطأ')}\n\n` +
+      `${escapeMarkdownV2('عذراً، حدث خطأ أثناء عرض قائمة الدروس.')}\n` +
       `${escapeMarkdownV2('يرجى المحاولة مرة أخرى أو التواصل مع الدعم الفني.')}\n\n` +
       `💬 ${bold('الدعم:')} ${escapeMarkdownV2(config.admin?.supportChannel || '@support')}`,
       { parse_mode: 'MarkdownV2' }
@@ -101,7 +99,7 @@ export async function handleCourses(ctx) {
 // Helper function to build the courses message
 function buildCoursesMessage(lessons) {
   let message = `📚 ${bold('قائمة الدروس المجدولة')}\n\n`;
-  message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+  message += `${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━')}\n\n`;
 
   const now = new Date();
   const today = now.toISOString().split('T')[0];
@@ -146,11 +144,11 @@ function buildCoursesMessage(lessons) {
     }
   }
 
-  message += `\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+  message += `\n${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━')}\n\n`;
   message += `📊 ${bold('الإحصائيات:')}\n`;
-  message += `• المجموع: ${lessons.length} درس\n`;
-  message += `• القادمة: ${upcomingLessons.length} درس\n`;
-  message += `• المكتملة: ${pastLessons.length} درس\n\n`;
+  message += `${escapeMarkdownV2('• المجموع:')} ${lessons.length} ${escapeMarkdownV2('درس')}\n`;
+  message += `${escapeMarkdownV2('• القادمة:')} ${upcomingLessons.length} ${escapeMarkdownV2('درس')}\n`;
+  message += `${escapeMarkdownV2('• المكتملة:')} ${pastLessons.length} ${escapeMarkdownV2('درس')}\n\n`;
   
   message += `💡 ${italic('لعرض تفاصيل أكثر، استخدم')} ${code('/upcominglessons')}`;
 

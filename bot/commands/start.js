@@ -80,10 +80,10 @@ export async function handleStart(ctx) {
 
     // Send error message to user
     await ctx.reply(
-      `❌ **حدث خطأ**\n\n` +
-      `عذراً، حدث خطأ أثناء بدء تشغيل البوت\\.\n` +
-      `يرجى المحاولة مرة أخرى أو التواصل مع الدعم الفني\\.\n\n` +
-      `💬 **الدعم:** ${escapeMarkdownV2(config.admin?.supportChannel || '@support')}`,
+      `❌ ${bold('حدث خطأ')}\n\n` +
+      `${escapeMarkdownV2('عذراً، حدث خطأ أثناء بدء تشغيل البوت.')}\n` +
+      `${escapeMarkdownV2('يرجى المحاولة مرة أخرى أو التواصل مع الدعم الفني.')}\n\n` +
+      `💬 ${bold('الدعم:')} ${escapeMarkdownV2(config.admin?.supportChannel || '@support')}`,
       { parse_mode: 'MarkdownV2' }
     );
   }
@@ -92,35 +92,35 @@ export async function handleStart(ctx) {
 // Helper function to build the start message
 function buildStartMessage(firstName, verified) {
   let message = `🤝 ${bold('مرحبًا بك في بوت معين المجتهدين')}\n\n`;
-  message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+  message += `${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━')}\n\n`;
 
   if (verified) {
     message += `✅ ${bold('حسابك مفعل بالفعل!')}\n\n`;
-    message += `مرحباً ${escapeMarkdownV2(firstName)}، يمكنك الآن استخدام جميع ميزات البوت:\n\n`;
+    message += `${escapeMarkdownV2('مرحباً')} ${escapeMarkdownV2(firstName)}${escapeMarkdownV2('، يمكنك الآن استخدام جميع ميزات البوت:')}\n\n`;
   } else {
     message += `🔒 ${bold('حسابك غير مفعل حاليًا')}\n\n`;
-    message += `أهلاً ${escapeMarkdownV2(firstName)}! لتفعيل حسابك واستخدام جميع الميزات، استخدم:\n\n`;
+    message += `${escapeMarkdownV2('أهلاً')} ${escapeMarkdownV2(firstName)}${escapeMarkdownV2('! لتفعيل حسابك واستخدام جميع الميزات، استخدم:')}\n\n`;
     message += `${code('/verify كود_التفعيل')}\n\n`;
-    message += `💡 للحصول على الكود، تواصل مع: ${escapeMarkdownV2(config.admin.supportChannel)}\n\n`;
+    message += `💡 ${escapeMarkdownV2('للحصول على الكود، تواصل مع:')} ${escapeMarkdownV2(config.admin.supportChannel)}\n\n`;
   }
 
   message += `📚 ${bold('الميزات المتاحة:')}\n\n`;
   
   if (verified) {
-    message += `• 📋 ${code('/profile')} \\- عرض ملفك الشخصي\n`;
-    message += `• 📅 ${code('/attendance')} \\- تسجيل الحضور\n`;
-    message += `• 📚 ${code('/courses')} \\- عرض الدروس\n`;
-    message += `• 📝 ${code('/assignments')} \\- عرض الواجبات\n`;
-    message += `• ⏰ ${code('/reminders')} \\- إدارة التذكيرات\n`;
-    message += `• ⚙️ ${code('/settings')} \\- الإعدادات\n`;
+    message += `• 📋 ${code('/profile')} ${escapeMarkdownV2('- عرض ملفك الشخصي')}\n`;
+    message += `• 📅 ${code('/attendance')} ${escapeMarkdownV2('- تسجيل الحضور')}\n`;
+    message += `• 📚 ${code('/courses')} ${escapeMarkdownV2('- عرض الدروس')}\n`;
+    message += `• 📝 ${code('/assignments')} ${escapeMarkdownV2('- عرض الواجبات')}\n`;
+    message += `• ⏰ ${code('/reminders')} ${escapeMarkdownV2('- إدارة التذكيرات')}\n`;
+    message += `• ⚙️ ${code('/settings')} ${escapeMarkdownV2('- الإعدادات')}\n`;
   } else {
-    message += `• 🔑 ${code('/verify')} \\- تفعيل الحساب\n`;
+    message += `• 🔑 ${code('/verify')} ${escapeMarkdownV2('- تفعيل الحساب')}\n`;
   }
   
-  message += `• ❓ ${code('/faq')} \\- الأسئلة الشائعة\n`;
-  message += `• 🆘 ${code('/help')} \\- المساعدة\n\n`;
+  message += `• ❓ ${code('/faq')} ${escapeMarkdownV2('- الأسئلة الشائعة')}\n`;
+  message += `• 🆘 ${code('/help')} ${escapeMarkdownV2('- المساعدة')}\n\n`;
   
-  message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+  message += `${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━')}\n\n`;
   message += `💬 ${bold('للدعم:')} ${escapeMarkdownV2(config.admin.supportChannel)}\n`;
   message += `🌐 ${bold('الموقع:')} ${escapeMarkdownV2(config.admin.website || 'قريباً')}`;
 

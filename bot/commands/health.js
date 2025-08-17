@@ -63,144 +63,107 @@ async function performHealthChecks() {
       checks.database.status = 'good';
       checks.database.message = 'قاعدة البيانات تعمل بشكل جيد';
     } else {
-      checks.database.status = 'slow';
-      checks.database.message = 'قاعدة البيانات تعمل ببطء';
+      checks.database.status = 'warning';
+      checks.database.message = 'قاعدة البيانات بطيئة نسبياً';
     }
-
+    
     // Cache health check
-    const cacheStatsData = cacheStats.getStats();
-    const avgHitRate = Object.values(cacheStatsData).reduce((sum, stat) => {
-      return sum + (stat.hits / (stat.hits + stat.misses) || 0);
-    }, 0) / Object.keys(cacheStatsData).length * 100;
+    const cacheData = cacheStats.getStats();
+    checks.cache.hitRate = cacheData.hitRate;
     
-    checks.cache.hitRate = avgHitRate;
-    
-    if (avgHitRate > 80) {
+    if (cacheData.hitRate > 90) {
       checks.cache.status = 'excellent';
-      checks.cache.message = 'التخزين المؤقت يعمل بكفاءة ممتازة';
-    } else if (avgHitRate > 60) {
+      checks.cache.message = 'التخزين المؤقت فعال جداً';
+    } else if (cacheData.hitRate > 70) {
       checks.cache.status = 'good';
-      checks.cache.message = 'التخزين المؤقت يعمل بشكل جيد';
+      checks.cache.message = 'التخزين المؤقت فعال';
     } else {
-      checks.cache.status = 'poor';
+      checks.cache.status = 'warning';
       checks.cache.message = 'التخزين المؤقت يحتاج تحسين';
     }
-
-    // Memory health check
-    const memoryUsage = process.memoryUsage();
-    const heapUsedMB = memoryUsage.heapUsed / 1024 / 1024;
-    checks.memory.usage = heapUsedMB;
     
-    if (heapUsedMB < 100) {
+    // Memory health check
+    checks.memory.usage = monitoringStats.memory.usage;
+    
+    if (checks.memory.usage < 100) {
       checks.memory.status = 'excellent';
-      checks.memory.message = 'استخدام الذاكرة ممتاز';
-    } else if (heapUsedMB < 200) {
+      checks.memory.message = 'استخدام الذاكرة منخفض';
+    } else if (checks.memory.usage < 200) {
       checks.memory.status = 'good';
-      checks.memory.message = 'استخدام الذاكرة جيد';
+      checks.memory.message = 'استخدام الذاكرة معتدل';
     } else {
-      checks.memory.status = 'high';
+      checks.memory.status = 'warning';
       checks.memory.message = 'استخدام الذاكرة مرتفع';
     }
-
-    // Uptime check
-    const uptime = process.uptime();
-    checks.uptime.value = uptime;
     
-    if (uptime > 86400) { // More than 1 day
+    // Uptime health check
+    checks.uptime.value = monitoringStats.uptime.days;
+    
+    if (checks.uptime.value > 30) {
       checks.uptime.status = 'excellent';
       checks.uptime.message = 'النظام مستقر لفترة طويلة';
-    } else if (uptime > 3600) { // More than 1 hour
+    } else if (checks.uptime.value > 7) {
       checks.uptime.status = 'good';
-      checks.uptime.message = 'النظام يعمل بشكل مستقر';
+      checks.uptime.message = 'النظام مستقر';
     } else {
       checks.uptime.status = 'recent';
-      checks.uptime.message = 'النظام تم تشغيله مؤخراً';
+      checks.uptime.message = 'إعادة تشغيل حديثة';
     }
-
+    
+    return checks;
+    
   } catch (error) {
-    console.error('Health check error:', error);
+    console.error('[HEALTH] Error in performHealthChecks:', error);
+    return checks;
   }
-
-  return checks;
 }
 
-// Build comprehensive health report
+// Build the health report message
 function buildHealthReport(monitoringStats, cacheStatsData, dbStatsData, healthChecks) {
-  let report = `🏥 ${bold('تقرير الحالة الصحية للنظام')}\n\n`;
-  report += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-  // Overall status
   const overallStatus = calculateOverallStatus(healthChecks);
-  const statusEmoji = getStatusEmoji(overallStatus);
-  report += `${statusEmoji} ${bold('الحالة العامة:')} ${getStatusText(overallStatus)}\n\n`;
+  const overallEmoji = getStatusEmoji(overallStatus);
+  const overallText = getStatusText(overallStatus);
 
-  // System uptime and basic info
-  report += `⏱️ ${bold('معلومات النظام:')}\n`;
-  report += `   • مدة التشغيل: ${escapeMarkdownV2(monitoringStats.uptime.formatted)}\n`;
-  report += `   • إجمالي الأوامر: ${monitoringStats.commands.total}\n`;
-  report += `   • المستخدمين النشطين: ${monitoringStats.users.active}\n`;
-  report += `   • وقت الاستجابة المتوسط: ${monitoringStats.responseTime.average}ms\n\n`;
+  let report = `🩺 ${bold('تقرير صحة النظام')}\n\n`;
+  report += `${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}\n\n`;
+  report += `📊 ${bold('الحالة العامة:')} ${overallEmoji} ${bold(overallText)}\n\n`;
 
-  // Health checks details
-  report += `🔍 ${bold('فحوصات مفصلة:')}\n\n`;
-  
-  // Database health
-  const dbEmoji = getStatusEmoji(healthChecks.database.status);
-  report += `${dbEmoji} ${bold('قاعدة البيانات:')}\n`;
-  report += `   • الحالة: ${escapeMarkdownV2(healthChecks.database.message)}\n`;
-  report += `   • متوسط وقت الاستعلام: ${dbStatsData.avgQueryTime}ms\n`;
-  report += `   • معدل نجاح التخزين المؤقت: ${dbStatsData.cacheHitRate}%\n`;
-  report += `   • إجمالي الاستعلامات: ${dbStatsData.queries}\n\n`;
+  // System Status
+  report += `🖥️ ${bold('حالة النظام:')}\n`;
+  report += `   ${getStatusEmoji(healthChecks.uptime.status)} ${bold('الوقت التشغيلي:')} ${monitoringStats.uptime.days} ${escapeMarkdownV2('أيام')} (${escapeMarkdownV2(healthChecks.uptime.message)})\n`;
+  report += `   ${getStatusEmoji(healthChecks.memory.status)} ${bold('استخدام الذاكرة:')} ${monitoringStats.memory.usage} MB (${escapeMarkdownV2(healthChecks.memory.message)})\n\n`;
 
-  // Cache health
-  const cacheEmoji = getStatusEmoji(healthChecks.cache.status);
-  report += `${cacheEmoji} ${bold('التخزين المؤقت:')}\n`;
-  report += `   • الحالة: ${escapeMarkdownV2(healthChecks.cache.message)}\n`;
-  report += `   • معدل النجاح: ${healthChecks.cache.hitRate.toFixed(1)}%\n`;
-  
-  // Cache details
-  const cacheDetails = Object.entries(cacheStatsData).map(([name, stats]) => {
-    const hitRate = stats.hits + stats.misses > 0 ? 
-      (stats.hits / (stats.hits + stats.misses) * 100).toFixed(1) : '0';
-    return `     ◦ ${escapeMarkdownV2(name)}: ${hitRate}% \\(${stats.keys} مفاتيح\\)`;
-  }).join('\n');
-  
-  if (cacheDetails) {
-    report += `${cacheDetails}\n\n`;
-  }
+  // Database Status
+  report += `💾 ${bold('قاعدة البيانات:')}\n`;
+  report += `   ${getStatusEmoji(healthChecks.database.status)} ${bold('وقت الاستجابة:')} ${healthChecks.database.responseTime} ms (${escapeMarkdownV2(healthChecks.database.message)})\n`;
+  report += `   🔄 ${bold('عدد الاستعلامات:')} ${dbStatsData.totalQueries}\n`;
+  report += `   ⏱️ ${bold('متوسط الوقت:')} ${dbStatsData.avgQueryTime.toFixed(2)} ms\n\n`;
 
-  // Memory health
-  const memoryEmoji = getStatusEmoji(healthChecks.memory.status);
-  report += `${memoryEmoji} ${bold('الذاكرة:')}\n`;
-  report += `   • الحالة: ${escapeMarkdownV2(healthChecks.memory.message)}\n`;
-  report += `   • الاستخدام: ${healthChecks.memory.usage.toFixed(1)}MB\n`;
-  report += `   • إجمالي الذاكرة: ${(monitoringStats.memory.current.heapTotal).toFixed(1)}MB\n\n`;
+  // Cache Status
+  report += `⚡ ${bold('التخزين المؤقت:')}\n`;
+  report += `   ${getStatusEmoji(healthChecks.cache.status)} ${bold('نسبة الإصابة:')} ${cacheStatsData.hitRate}% (${escapeMarkdownV2(healthChecks.cache.message)})\n`;
+  report += `   📦 ${bold('عدد العناصر:')} ${cacheStatsData.size}\n`;
+  report += `   🔑 ${bold('الإصابات:')} ${cacheStatsData.hits}\n`;
+  report += `   ❌ ${bold('الإخفاقات:')} ${cacheStatsData.misses}\n\n`;
 
-  // Performance metrics
-  report += `📊 ${bold('مقاييس الأداء:')}\n`;
-  report += `   • أسرع استجابة: ${monitoringStats.responseTime.min}ms\n`;
-  report += `   • أبطأ استجابة: ${monitoringStats.responseTime.max}ms\n`;
-  report += `   • إجمالي الأخطاء: ${monitoringStats.errors.total}\n\n`;
+  // Response Time
+  report += `🚀 ${bold('أداء الاستجابة:')}\n`;
+  report += `   ⏱️ ${bold('المتوسط:')} ${monitoringStats.responseTime.average.toFixed(2)} ms\n`;
+  report += `   🔝 ${bold('الأقصى:')} ${monitoringStats.responseTime.max.toFixed(2)} ms\n`;
+  report += `   🔻 ${bold('الأدنى:')} ${monitoringStats.responseTime.min.toFixed(2)} ms\n\n`;
 
-  // Top commands
-  if (monitoringStats.commands.top.length > 0) {
-    report += `🔥 ${bold('الأوامر الأكثر استخداماً:')}\n`;
-    monitoringStats.commands.top.slice(0, 5).forEach((cmd, index) => {
-      const errorRate = cmd.errorRate > 0 ? ` \\(${cmd.errorRate.toFixed(1)}% أخطاء\\)` : '';
-      report += `   ${index + 1}\\. ${code(cmd.command)}: ${cmd.count} استخدام${errorRate}\n`;
+  // Error Statistics
+  report += `⚠️ ${bold('إحصائيات الأخطاء:')}\n`;
+  report += `   🔢 ${bold('الإجمالي:')} ${monitoringStats.errors.total}\n`;
+  if (Object.keys(monitoringStats.errors.byType).length > 0) {
+    report += `   📋 ${bold('حسب النوع:')}\n`;
+    Object.entries(monitoringStats.errors.byType).forEach(([errorName, err]) => {
+      report += `      • ${escapeMarkdownV2(errorName)}: ${err.count} ${escapeMarkdownV2('مرة')}\n`;
     });
-    report += `\n`;
+  } else {
+    report += `   ✅ ${italic('لا أخطاء مسجلة')}\n`;
   }
-
-  // Recent errors (if any)
-  if (monitoringStats.errors.recent.length > 0) {
-    report += `⚠️ ${bold('أخطاء حديثة:')}\n`;
-    monitoringStats.errors.recent.slice(0, 3).forEach((err, index) => {
-      const errorName = err.error.split(':')[0] || 'خطأ غير محدد';
-      report += `   ${index + 1}\\. ${escapeMarkdownV2(errorName)}: ${err.count} مرة\n`;
-    });
-    report += `\n`;
-  }
+  report += `\n`;
 
   // Recommendations
   const recommendations = generateRecommendations(healthChecks, monitoringStats);
@@ -212,7 +175,7 @@ function buildHealthReport(monitoringStats, cacheStatsData, dbStatsData, healthC
     report += `\n`;
   }
 
-  report += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  report += `${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}\n\n`;
   report += `🕐 ${italic(`آخر فحص: ${new Date().toLocaleString('ar-SA')}`)}\n`;
   report += `💬 ${bold('للدعم:')} ${escapeMarkdownV2(config.admin?.supportChannel || '@support')}`;
 

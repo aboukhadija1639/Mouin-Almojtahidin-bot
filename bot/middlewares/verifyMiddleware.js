@@ -1,5 +1,6 @@
 import { isUserVerified, getUserLanguage } from '../utils/database.js';
 import { config } from '../../config.js';
+import { escapeMarkdownV2, code } from '../utils/escapeMarkdownV2.js';
 
 // List of commands that don't require verification
 const publicCommands = ['/start', '/verify'];
@@ -21,12 +22,12 @@ export function verifyMiddleware() {
       // Define messages based on language
       const messages = {
         ar: {
-          activationRequired: '🔒 *مطلوب التفعيل*\n\nعذراً، يجب تفعيل حسابك أولاً لاستخدام هذه الميزة.\n\nاستخدم الأمر: `/verify كود_التفعيل`\n\nللحصول على كود التفعيل، تواصل مع',
-          error: '❌ حدث خطأ، حاول مرة أخرى أو تواصل مع'
+          activationRequired: `${escapeMarkdownV2('🔒 *مطلوب التفعيل*')}\n\n${escapeMarkdownV2('عذراً، يجب تفعيل حسابك أولاً لاستخدام هذه الميزة.')}\n\n${escapeMarkdownV2('استخدم الأمر:')} ${code('/verify كود_التفعيل')}\n\n${escapeMarkdownV2('للحصول على كود التفعيل، تواصل مع')}`,
+          error: `${escapeMarkdownV2('❌ حدث خطأ، حاول مرة أخرى أو تواصل مع')}`
         },
         en: {
-          activationRequired: '🔒 *Activation Required*\n\nSorry, you need to activate your account first to use this feature.\n\nUse the command: `/verify activation_code`\n\nTo get an activation code, contact',
-          error: '❌ An error occurred, try again or contact'
+          activationRequired: `${escapeMarkdownV2('🔒 *Activation Required*')}\n\n${escapeMarkdownV2('Sorry, you need to activate your account first to use this feature.')}\n\n${escapeMarkdownV2('Use the command:')} ${code('/verify activation_code')}\n\n${escapeMarkdownV2('To get an activation code, contact')}`,
+          error: `${escapeMarkdownV2('❌ An error occurred, try again or contact')}`
         }
       };
       
@@ -46,7 +47,7 @@ export function verifyMiddleware() {
       if (!verified) {
         const currentMessages = messages[userLanguage] || messages.ar;
         await ctx.reply(
-          `${currentMessages.activationRequired} ${config.admin.supportChannel.replace(/@/g, '\\@')}`,
+          `${currentMessages.activationRequired} ${escapeMarkdownV2(config.admin.supportChannel)}`,
           { parse_mode: 'MarkdownV2' }
         );
         return;
@@ -57,12 +58,11 @@ export function verifyMiddleware() {
     } catch (error) {
       console.error('ERROR VERIFY_MIDDLEWARE:', error);
       const userLanguage = await getUserLanguage(ctx.from?.id) || 'ar';
-      const messages = {
-        ar: { error: '❌ حدث خطأ، حاول مرة أخرى أو تواصل مع' },
-        en: { error: '❌ An error occurred, try again or contact' }
-      };
       const currentMessages = messages[userLanguage] || messages.ar;
-      await ctx.reply(`${currentMessages.error} ${config.admin.supportChannel}`);
+      await ctx.reply(
+        `${currentMessages.error} ${escapeMarkdownV2(config.admin.supportChannel)}`,
+        { parse_mode: 'MarkdownV2' }
+      );
     }
   };
 }
@@ -74,9 +74,9 @@ export async function requireAdmin(ctx, next) {
     
     if (!userId || !config.admin.userIds.includes(userId)) {
       await ctx.reply(
-        `🚫 *غير مسموح*\n\n` +
-        `هذا الأمر مخصص للمدراء فقط.\n\n` +
-        `للمساعدة، تواصل مع ${config.admin.supportChannel.replace(/@/g, '\\@')}`,
+        `🚫 *${escapeMarkdownV2('غير مسموح')}*\n\n` +
+        `${escapeMarkdownV2('هذا الأمر مخصص للمدراء فقط.')}\n\n` +
+        `${escapeMarkdownV2('للمساعدة، تواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
         { parse_mode: 'MarkdownV2' }
       );
       return;
@@ -85,12 +85,15 @@ export async function requireAdmin(ctx, next) {
     await next();
   } catch (error) {
     console.error('ERROR ADMIN_CHECK:', error);
-    const messages = {
-      ar: { error: '❌ حدث خطأ، حاول مرة أخرى أو تواصل مع' },
-      en: { error: '❌ An error occurred, try again or contact' }
-    };
     const userLanguage = await getUserLanguage(ctx.from?.id) || 'ar';
+    const messages = {
+      ar: { error: `${escapeMarkdownV2('❌ حدث خطأ، حاول مرة أخرى أو تواصل مع')}` },
+      en: { error: `${escapeMarkdownV2('❌ An error occurred, try again or contact')}` }
+    };
     const currentMessages = messages[userLanguage] || messages.ar;
-    await ctx.reply(`${currentMessages.error} ${config.admin.supportChannel}`);
+    await ctx.reply(
+      `${currentMessages.error} ${escapeMarkdownV2(config.admin.supportChannel)}`,
+      { parse_mode: 'MarkdownV2' }
+    );
   }
 }

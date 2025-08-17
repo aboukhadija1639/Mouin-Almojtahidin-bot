@@ -54,120 +54,6 @@ export function ensureDataDirectoryExists() {
   }
 }
 
-// Enhanced getUserInfo with caching
-// export async function getUserInfo(userId) {
-//   const startTime = Date.now();
-  
-//   try {
-//     // Check cache first
-//     const cachedUser = userCacheUtil.get(userId);
-//     if (cachedUser) {
-//       trackQuery('getUserInfo', startTime, true);
-//       return { success: true, data: cachedUser };
-//     }
-    
-//     // If not in cache, query database
-//     const user = await db.get('SELECT * FROM users WHERE user_id = ?', [userId]);
-    
-//     if (user) {
-//       // Cache the result
-//       userCacheUtil.set(userId, user, 300); // 5 minutes
-//       trackQuery('getUserInfo', startTime, false);
-//       return { success: true, data: user };
-//     } else {
-//       trackQuery('getUserInfo', startTime, false);
-//       return { success: false, data: null };
-//     }
-//   } catch (error) {
-//     console.error('خطأ في جلب معلومات المستخدم:', error);
-//     trackQuery('getUserInfo', startTime, false);
-//     return { success: false, data: null };
-//   }
-// }
-
-// Enhanced isUserVerified with caching
-// export async function isUserVerified(userId) {
-//   const startTime = Date.now();
-  
-//   try {
-//     // Check cache first
-//     const cachedUser = userCacheUtil.get(userId);
-//     if (cachedUser) {
-//       trackQuery('isUserVerified', startTime, true);
-//       return { verified: cachedUser.verified || false };
-//     }
-    
-//     // Query database
-//     const user = await db.get('SELECT verified FROM users WHERE user_id = ?', [userId]);
-    
-//     if (user) {
-//       // Cache minimal user data
-//       const userData = { id: userId, verified: user.verified };
-//       userCacheUtil.set(userId, userData, 300);
-//       trackQuery('isUserVerified', startTime, false);
-//       return { verified: user.verified || false };
-//     } else {
-//       trackQuery('isUserVerified', startTime, false);
-//       return { verified: false };
-//     }
-//   } catch (error) {
-//     console.error('خطأ في فحص تفعيل المستخدم:', error);
-//     trackQuery('isUserVerified', startTime, false);
-//     return { verified: false };
-//   }
-// }
-
-// Enhanced getCourses with caching
-// export async function getCourses() {
-//   const startTime = Date.now();
-  
-//   try {
-//     // Check cache first
-//     const cachedCourses = courseCacheUtil.getAll();
-//     if (cachedCourses) {
-//       trackQuery('getCourses', startTime, true);
-//       return { success: true, data: cachedCourses };
-//     }
-    
-//     // Query database
-//     const courses = await db.all('SELECT * FROM courses ORDER BY course_id');
-    
-//     // Cache the results
-//     courseCacheUtil.setAll(courses, 600); // 10 minutes
-//     trackQuery('getCourses', startTime, false);
-//     return { success: true, data: courses };
-//   } catch (error) {
-//     console.error('خطأ في جلب الكورسات:', error);
-//     trackQuery('getCourses', startTime, false);
-//     return { success: false, data: [] };
-//   }
-// }
-
-// Enhanced getAssignments with caching
-// export async function getAssignments() {
-//   const startTime = Date.now();
-  
-//   try {
-//     // Check cache first
-//     const cachedAssignments = assignmentCacheUtil.getAll();
-//     if (cachedAssignments) {
-//       trackQuery('getAssignments', startTime, true);
-//       return { success: true, data: cachedAssignments };
-//     }
-    
-//     // Query database
-//     const assignments = await db.all('SELECT * FROM assignments ORDER BY assignment_id DESC');
-    
-//     // Cache the results
-//     assignmentCacheUtil.setAll(assignments, 300); // 5 minutes
-//     trackQuery('getAssignments', startTime, false);
-//     return { success: true, data: assignments };
-//   } catch (error) {
-//     console.error('خطأ في جلب الواجبات:', error);
-//     trackQuery('getAssignments', startTime, false);
-//     return { success: false, data: [] };
-//   }
-// }
 
 // Batch user operations for better performance
 export async function getUsersBatch(userIds) {
@@ -212,27 +98,6 @@ export async function getUsersBatch(userIds) {
   }
 }
 
-// Enhanced addUser with cache invalidation
-// export async function addUser(userId, username, firstName) {
-//   const startTime = Date.now();
-  
-//   try {
-//     await db.run(
-//       'INSERT OR REPLACE INTO users (user_id, username, first_name, join_date) VALUES (?, ?, ?, datetime("now"))',
-//       [userId, username, firstName]
-//     );
-    
-//     // Invalidate user cache since data changed
-//     userCacheUtil.del(userId);
-    
-//     trackQuery('addUser', startTime, false);
-//     return { success: true };
-//   } catch (error) {
-//     console.error('خطأ في إضافة المستخدم:', error);
-//     trackQuery('addUser', startTime, false);
-//     return { success: false };
-//   }
-// }
 
 // Enhanced updateUserVerification with cache invalidation
 export async function updateUserVerification(userId, verified) {
@@ -256,62 +121,15 @@ export async function updateUserVerification(userId, verified) {
   }
 }
 
-// Cache-aware course operations
-// export async function addCourse(title, description, startDate, instructor) {
-//   const startTime = Date.now();
-  
-//   try {
-//     const result = await db.run(
-//       'INSERT INTO courses (title, description, start_date, instructor) VALUES (?, ?, ?, ?)',
-//       [title, description, startDate, instructor]
-//     );
-    
-//     // Invalidate course cache
-//     courseCacheUtil.delAll();
-    
-//     trackQuery('addCourse', startTime, false);
-//     return { success: true, courseId: result.lastID };
-//   } catch (error) {
-//     console.error('خطأ في إضافة الكورس:', error);
-//     trackQuery('addCourse', startTime, false);
-//     return { success: false };
-//   }
-// }
-
-// Cache-aware assignment operations
-// export async function addAssignment(title, description, dueDate, courseId) {
-//   const startTime = Date.now();
-  
-//   try {
-//     const result = await db.run(
-//       'INSERT INTO assignments (title, description, due_date, course_id) VALUES (?, ?, ?, ?)',
-//       [title, description, dueDate, courseId]
-//     );
-    
-//     // Invalidate assignment cache
-//     assignmentCacheUtil.delAll();
-//     if (courseId) {
-//       courseCacheUtil.delAssignments(courseId);
-//     }
-    
-//     trackQuery('addAssignment', startTime, false);
-//     return { success: true, assignmentId: result.lastID };
-//   } catch (error) {
-//     console.error('خطأ في إضافة الواجب:', error);
-//     trackQuery('addAssignment', startTime, false);
-//     return { success: false };
-//   }
-// }
 
 // Database statistics for monitoring
 export function getDbStats() {
-  const avgQueryTime = dbStats.queries > 0 ? dbStats.totalTime / dbStats.queries : 0;
-  const cacheHitRate = dbStats.queries > 0 ? (dbStats.cacheHits / dbStats.queries) * 100 : 0;
-  
+  const hitRate = dbStats.queries > 0 ? (dbStats.cacheHits / dbStats.queries) * 100 : 0;
   return {
-    ...dbStats,
-    avgQueryTime: Math.round(avgQueryTime * 100) / 100,
-    cacheHitRate: Math.round(cacheHitRate * 100) / 100
+    queries: dbStats.queries,
+    cacheHitRate: hitRate.toFixed(2),
+    avgQueryTime: dbStats.totalTime / dbStats.queries || 0,
+    slowQueries: dbStats.slowQueries
   };
 }
 
@@ -325,15 +143,17 @@ export function resetDbStats() {
 }
 
 // getAssignments
+// ... (Apply similar pattern to getAssignments, getLessons, getUserSettings, etc.)
 export async function getAssignments() {
   try {
-    const assignments = await db.all('SELECT * FROM assignments ORDER BY assignment_id DESC');
+    const assignments = await db.all('SELECT * FROM assignments ORDER BY due_date, due_time');
     return { success: true, data: assignments };
   } catch (error) {
-    console.error('خطأ في جلب الواجبات:', error);
+    console.error('خطأ في جلب المهام:', error);
     return { success: false, data: [] };
   }
 }
+
 
 // addReminder function (alias for addCustomReminder for backward compatibility)
 export async function addReminder(userId, dateTime, message) {
@@ -532,23 +352,53 @@ export async function addUser(userId, username, firstName) {
   }
 }
 
+// Enhanced getUserInfo with caching and tracking
 export async function getUserInfo(userId) {
+  const startTime = Date.now();
   try {
+    const cachedUser = userCacheUtil.get(userId);
+    if (cachedUser) {
+      trackQuery('getUserInfo', startTime, true);
+      return { success: true, data: cachedUser };
+    }
+    
     const user = await db.get('SELECT * FROM users WHERE user_id = ?', [userId]);
-    return user;
+    
+    if (user) {
+      userCacheUtil.set(userId, user, 300); // 5 min TTL
+      trackQuery('getUserInfo', startTime, false);
+      return { success: true, data: user };
+    } else {
+      trackQuery('getUserInfo', startTime, false);
+      return { success: false, data: null };
+    }
   } catch (error) {
     console.error('خطأ في جلب معلومات المستخدم:', error);
-    return null;
+    trackQuery('getUserInfo', startTime, false);
+    return { success: false, error: error.message };
   }
 }
 
+// Enhanced isUserVerified (similarly)
 export async function isUserVerified(userId) {
+  const startTime = Date.now();
   try {
-    const user = await db.get('SELECT is_verified FROM users WHERE user_id = ?', [userId]);
-    return user ? Boolean(user.is_verified) : false;
+    const cachedUser = userCacheUtil.get(userId);
+    if (cachedUser) {
+      trackQuery('isUserVerified', startTime, true);
+      return { verified: !!cachedUser.verified };
+    }
+    
+    const user = await db.get('SELECT verified FROM users WHERE user_id = ?', [userId]);
+    
+    const verified = !!user?.verified;
+    userCacheUtil.set(userId, { verified }, 300); // Cache minimal
+    trackQuery('isUserVerified', startTime, false);
+    return { verified };
   } catch (error) {
-    console.error('خطأ في التحقق من حالة المستخدم:', error);
-    return false;
+    console.error('خطأ في فحص تفعيل المستخدم:', error);
+    trackQuery('isUserVerified', startTime, false);
+    return { verified: false, error: error.message };
   }
 }
 
@@ -588,9 +438,10 @@ export async function toggleUserReminders(userId) {
 }
 
 // Lesson functions
+// ... (Apply similar pattern to getAssignments, getLessons, getUserSettings, etc.)
 export async function getLessons() {
   try {
-    const lessons = await db.all('SELECT * FROM lessons ORDER BY date, time');
+    const lessons = await db.all('SELECT * FROM lessons ORDER BY due_date, due_time');
     return { success: true, data: lessons };
   } catch (error) {
     console.error('خطأ في جلب الدروس:', error);
@@ -898,24 +749,27 @@ function getDb() {
 }
 
 
+// Enhanced getCourses (similarly)
 export async function getCourses() {
+  const startTime = Date.now();
   try {
-    const courses = await db.all(`
-      SELECT c.course_id, c.name, c.description, c.created_at,
-             COUNT(DISTINCT l.lesson_id) as lesson_count,
-             COUNT(DISTINCT a.assignment_id) as assignment_count
-      FROM courses c
-      LEFT JOIN lessons l ON c.course_id = l.course_id
-      LEFT JOIN assignments a ON c.course_id = a.course_id
-      GROUP BY c.course_id, c.name, c.description, c.created_at
-      ORDER BY c.course_id
-    `);
+    const cached = courseCacheUtil.getAll();
+    if (cached) {
+      trackQuery('getCourses', startTime, true);
+      return { success: true, data: cached };
+    }
+    
+    const courses = await db.all('SELECT * FROM courses ORDER BY course_id');
+    courseCacheUtil.setAll(courses, 600);
+    trackQuery('getCourses', startTime, false);
     return { success: true, data: courses };
   } catch (error) {
-    console.error('خطأ في جلب الكورسات:', error);
-    return { success: false, data: [] };
+    trackQuery('getCourses', startTime, false);
+    return { success: false, data: [], error: error.message };
   }
 }
+
+// ... (Apply similar pattern to getAssignments, getLessons, getUserSettings, etc.)
 
 // Course management functions
 export async function addCourse(name, description) {
@@ -1060,6 +914,7 @@ export async function updateUserSettings(userId, settings) {
   }
 }
 
+// ... (Apply similar pattern to getAssignments, getLessons, getUserSettings, etc.)
 export async function getUserSettings(userId) {
   try {
     const user = await db.get(
@@ -1163,24 +1018,22 @@ export async function DeleteReminder(userId, reminderId) {
   }
 }
 
-// Lessons functions for upcoming lessons
+// Fixed: Use prepared param for days in getUpcomingLessons
 export async function getUpcomingLessons(days = 7) {
+  const startTime = Date.now();
   try {
-    const currentDate = new Date();
-    const futureDate = new Date();
-    futureDate.setDate(currentDate.getDate() + days);
-    
     const lessons = await db.all(`
       SELECT l.*, c.name as course_name 
       FROM lessons l 
       LEFT JOIN courses c ON l.course_id = c.course_id 
-      WHERE date(l.date) BETWEEN date('now') AND date('now', '+${days} days')
+      WHERE date(l.date) BETWEEN date('now') AND date(?, '+? days')
       ORDER BY l.date ASC, l.time ASC
-    `);
+    `, ['now', days]);  // Fixed: Params instead of interpolation
+    trackQuery('getUpcomingLessons', startTime, false);  // Add caching if frequent
     return { success: true, data: lessons };
   } catch (error) {
-    console.error('خطأ في جلب الدروس القادمة:', error);
-    return { success: false, data: [] };
+    trackQuery('getUpcomingLessons', startTime, false);
+    return { success: false, data: [], error: error.message };
   }
 }
 

@@ -15,8 +15,8 @@ export async function handleVerify(ctx) {
     if (args.length < 2) {
       await ctx.reply(
         `🔑 *${escapeMarkdownV2('كيفية استخدام أمر التفعيل')}*\n\n` +
-        `${escapeMarkdownV2('الصيغة الصحيحة:')} /verify كود_التفعيل\n\n` +
-        `${escapeMarkdownV2('مثال:')} /verify ABC123\n\n` +
+        `${escapeMarkdownV2('الصيغة الصحيحة:')} ${escapeMarkdownV2('/verify كود_التفعيل')}\n\n` +
+        `${escapeMarkdownV2('مثال:')} ${escapeMarkdownV2('/verify ABC123')}\n\n` +
         `💡 ${escapeMarkdownV2('للحصول على كود التفعيل، تواصل مع:')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
         { parse_mode: 'MarkdownV2' }
       );
@@ -98,6 +98,6 @@ export async function handleVerify(ctx) {
     } catch (e) {
       console.error('Failed to log error:', e);
     }
-    await ctx.reply(`❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${escapeMarkdownV2(config.admin.supportChannel)}`, { parse_mode: 'MarkdownV2' });
+    await ctx.reply(`❌ ${escapeMarkdownV2('حدث خطأ، حاول مرة أخرى أو تواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)}`, { parse_mode: 'MarkdownV2' });
   }
 }

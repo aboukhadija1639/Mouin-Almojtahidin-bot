@@ -69,9 +69,10 @@ export function validateTextLength(text, minLength = 0, maxLength = 1000) {
  * @param {string|number} userId - The user ID to validate
  * @returns {number|null} - The validated user ID or null if invalid
  */
+// Enhanced: Support larger Telegram IDs (up to 2^52)
 export function validateUserId(userId) {
-  const id = parseInt(userId);
-  if (isNaN(id) || id <= 0 || id > 9999999999) { // Telegram user IDs are typically 9-10 digits
+  const id = Number(userId);  // Use Number for larger values
+  if (isNaN(id) || id <= 0 || id > Number.MAX_SAFE_INTEGER) {
     return null;
   }
   return id;
@@ -99,9 +100,11 @@ const rateLimitStore = new Map();
  * @param {number} windowMs - Time window in milliseconds
  * @returns {boolean} - True if rate limited, false otherwise
  */
+
+
 export function isRateLimited(userId, maxRequests = 10, windowMs = 60000) {
   const now = Date.now();
-  const userKey = `user_${userId}`;
+  const userKey = `user_${userId}_${command}`;  // Enhanced: Per-command key
   
   if (!rateLimitStore.has(userKey)) {
     rateLimitStore.set(userKey, { count: 1, resetTime: now + windowMs });

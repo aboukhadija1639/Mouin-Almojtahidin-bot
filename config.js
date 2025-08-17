@@ -27,39 +27,51 @@ function parseAdminUserIds(userIdsStr) {
 }
 
 export const config = {
+  env: process.env.NODE_ENV || 'development',
+
   botToken: validateEnvVar('BOT_TOKEN', process.env.BOT_TOKEN, true),
+
   admin: {
     userIds: parseAdminUserIds(process.env.ADMIN_USER_IDS),
     groupId: validateEnvVar('GROUP_ID', process.env.GROUP_ID, false),
     supportChannel: validateEnvVar('SUPPORT_CHANNEL', process.env.SUPPORT_CHANNEL, false, '@SupportChannel'),
     chatId: validateEnvVar('ADMIN_CHAT_ID', process.env.ADMIN_CHAT_ID, false)
   },
+
   users: {
     activationCode: validateEnvVar('ACTIVATION_CODE', process.env.ACTIVATION_CODE, true, 'DEFAULT_CODE')
   },
+
   zoom: {
     fullLink: validateEnvVar('ZOOM_LINK', process.env.ZOOM_LINK, false, 'https://zoom.us/j/example')
   },
-  // Rate limiting configuration
+
   rateLimiting: {
     enabled: process.env.RATE_LIMITING_ENABLED !== 'false',
     maxRequestsPerMinute: parseInt(process.env.MAX_REQUESTS_PER_MINUTE) || 30,
     maxRequestsPerHour: parseInt(process.env.MAX_REQUESTS_PER_HOUR) || 100
   },
-  // New: Server/Webhook settings for Railway and cloud deployment
+
   server: {
     port: parseInt(process.env.PORT, 10) || 3000,
   },
+
   webhook: {
+    // في حالة production نستعمل Webhook
+    enabled: (process.env.NODE_ENV === 'production'),
     domain: process.env.WEBHOOK_DOMAIN || '',
-    path: process.env.WEBHOOK_PATH || '/bot',
-    // Support legacy WEBHOOK_URL if already provided
-    url: process.env.WEBHOOK_URL || (process.env.WEBHOOK_DOMAIN ? `https://${process.env.WEBHOOK_DOMAIN}${process.env.WEBHOOK_PATH || '/bot'}` : ''),
+    path: process.env.WEBHOOK_PATH || '/webhook',
+    url: process.env.WEBHOOK_URL || (
+      process.env.WEBHOOK_DOMAIN 
+        ? `https://${process.env.WEBHOOK_DOMAIN}${process.env.WEBHOOK_PATH || '/webhook'}`
+        : ''
+    ),
   },
-  // Database configuration (supports Railway style DATABASE_URL/DATABASE_PATH)
+
   database: {
     path: process.env.DATABASE_URL || process.env.DATABASE_PATH || './data/mouin_almojtahidin.db',
   },
+
   faq: [
     {
       question: "كيف يمكنني التسجيل في الكورس؟",
@@ -86,6 +98,7 @@ export const config = {
       answer: `للحصول على المساعدة، تواصل معنا عبر ${process.env.SUPPORT_CHANNEL || '@SupportChannel'}`
     }
   ],
+
   schedule: {
     lessons: [
       {

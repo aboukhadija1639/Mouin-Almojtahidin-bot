@@ -1,13 +1,13 @@
 import { toggleUserReminders, getUserInfo } from '../utils/database.js';
 import { config } from '../../config.js';
-import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
+import { escapeMarkdownV2, bold } from '../utils/escapeMarkdownV2.js';
 
 function replyMarkdown(ctx, message) {
   return ctx.reply(message, { parse_mode: 'MarkdownV2' });
 }
 
 function buildErrorMessage(title, body) {
-  return `❌ *${escapeMarkdownV2(title)}*\n━━━━━━━━━━━━━━━━━━━━\n${escapeMarkdownV2(body)}\n💡 للمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}`;
+  return `❌ ${bold(escapeMarkdownV2(title))}\n${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━')}\n${escapeMarkdownV2(body)}\n💡 ${escapeMarkdownV2('للمساعدة:')} ${escapeMarkdownV2(config.admin.supportChannel)}`;
 }
 
 function logAndReply(ctx, userId, message) {
@@ -44,7 +44,7 @@ export async function handleReminders(ctx) {
       ? '✅ ستتلقى: تذكيرات الدروس والواجبات'
       : '❌ لن تتلقى: تذكيرات';
 
-    const response = `*${escapeMarkdownV2(header)}*\n━━━━━━━━━━━━━━━━━━━━\n📊 *الحالة الحالية:* ${escapeMarkdownV2(statusText)}\n${escapeMarkdownV2(body)}\n🔄 استخدم /reminders للتغيير مجددًا\n💡 للمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}`;
+    const response = `${bold(escapeMarkdownV2(header))}\n${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━')}\n📊 ${bold('الحالة الحالية:')} ${escapeMarkdownV2(statusText)}\n${escapeMarkdownV2(body)}\n🔄 ${escapeMarkdownV2('استخدم /reminders للتغيير مجددًا')}\n💡 ${escapeMarkdownV2('للمساعدة:')} ${escapeMarkdownV2(config.admin.supportChannel)}`;
     return logAndReply(ctx, userId, response);
 
   } catch (error) {

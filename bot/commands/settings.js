@@ -42,14 +42,14 @@ export async function handleSettings(ctx) {
 
       await ctx.reply(
         `⚙️ ${bold('إعداداتك الحالية')}\n\n` +
-        `━━━━━━━━━━━━━━━━━━━━\n\n` +
-        `🔔 ${bold('التذكيرات:')} ${remindersStatus}\n` +
-        `🌐 ${bold('اللغة:')} ${languageStatus}\n` +
-        `⏰ ${bold('تكرار الإشعارات:')} ${frequencyStatus}\n\n` +
-        `━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━')}\n\n` +
+        `🔔 ${bold('التذكيرات:')} ${escapeMarkdownV2(remindersStatus)}\n` +
+        `🌐 ${bold('اللغة:')} ${escapeMarkdownV2(languageStatus)}\n` +
+        `⏰ ${bold('تكرار الإشعارات:')} ${escapeMarkdownV2(frequencyStatus)}\n\n` +
+        `${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━')}\n\n` +
         `🛠️ ${bold('اختر من الأزرار أدناه لتغيير الإعدادات:')}\n\n` +
-        `💡 يمكنك إضافة تذكيرات خاصة باستخدام ${code('/addreminder')}\n\n` +
-        `📞 للمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}`,
+        `💡 ${escapeMarkdownV2('يمكنك إضافة تذكيرات خاصة باستخدام')} ${code('/addreminder')}\n\n` +
+        `${escapeMarkdownV2('📞 للمساعدة:')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
         { 
           parse_mode: 'MarkdownV2',
           reply_markup: keyboard
@@ -80,14 +80,14 @@ export async function handleSettings(ctx) {
       if (success) {
         const status = newValue ? '✅ تم تفعيل التذكيرات' : '🔕 تم إيقاف التذكيرات';
         await ctx.reply(
-          `✅ ${bold('تم تحديث إعداداتك بنجاح')}\n\n${status}\n\n` +
-          `📝 يمكنك عرض إعداداتك باستخدام ${code('/settings')}`,
+          `✅ ${bold('تم تحديث إعداداتك بنجاح')}\n\n${escapeMarkdownV2(status)}\n\n` +
+          `📝 ${escapeMarkdownV2('يمكنك عرض إعداداتك باستخدام')} ${code('/settings')}`,
           { parse_mode: 'MarkdownV2' }
         );
       } else {
         await ctx.reply(
           `❌ ${bold('حدث خطأ أثناء تحديث الإعدادات')}\n\n` +
-          `يرجى المحاولة لاحقًا أو التواصل مع الدعم: ${escapeMarkdownV2(config.admin.supportChannel)}`,
+          `${escapeMarkdownV2('يرجى المحاولة لاحقًا أو التواصل مع الدعم:')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
           { parse_mode: 'MarkdownV2' }
         );
       }
@@ -100,8 +100,8 @@ export async function handleSettings(ctx) {
         await ctx.reply(
           `❌ ${bold('قيمة غير صحيحة')}\n\n` +
           `📝 ${bold('الاستخدام الصحيح:')}\n` +
-          `• ${code('/settings language ar')} للعربية\n` +
-          `• ${code('/settings language en')} للإنجليزية`,
+          `• ${code('/settings language ar')} ${escapeMarkdownV2('للعربية')}\n` +
+          `• ${code('/settings language en')} ${escapeMarkdownV2('للإنجليزية')}`,
           { parse_mode: 'MarkdownV2' }
         );
         return;
@@ -113,15 +113,15 @@ export async function handleSettings(ctx) {
         const languageName = settingValue === 'ar' ? '🇸🇦 العربية' : '🇺🇸 English';
         await ctx.reply(
           `✅ ${bold('تم تحديث إعداداتك بنجاح')}\n\n` +
-          `🌐 تم تغيير اللغة إلى: ${languageName}\n\n` +
+          `🌐 ${escapeMarkdownV2('تم تغيير اللغة إلى:')} ${escapeMarkdownV2(languageName)}\n\n` +
           `💡 ${italic('ملاحظة: هذه الميزة قيد التطوير وستؤثر على الرسائل المستقبلية')}\n\n` +
-          `📝 يمكنك عرض إعداداتك باستخدام ${code('/settings')}`,
+          `📝 ${escapeMarkdownV2('يمكنك عرض إعداداتك باستخدام')} ${code('/settings')}`,
           { parse_mode: 'MarkdownV2' }
         );
       } else {
         await ctx.reply(
           `❌ ${bold('حدث خطأ أثناء تحديث الإعدادات')}\n\n` +
-          `يرجى المحاولة لاحقًا أو التواصل مع الدعم: ${escapeMarkdownV2(config.admin.supportChannel)}`,
+          `${escapeMarkdownV2('يرجى المحاولة لاحقًا أو التواصل مع الدعم:')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
           { parse_mode: 'MarkdownV2' }
         );
       }
@@ -134,9 +134,9 @@ export async function handleSettings(ctx) {
         await ctx.reply(
           `❌ ${bold('قيمة غير صحيحة')}\n\n` +
           `📝 ${bold('الاستخدام الصحيح:')}\n` +
-          `• ${code('/settings frequency daily')} يومياً\n` +
-          `• ${code('/settings frequency weekly')} أسبوعياً\n` +
-          `• ${code('/settings frequency off')} إيقاف`,
+          `• ${code('/settings frequency daily')} ${escapeMarkdownV2('ليومياً')}\n` +
+          `• ${code('/settings frequency weekly')} ${escapeMarkdownV2('لأسبوعياً')}\n` +
+          `• ${code('/settings frequency off')} ${escapeMarkdownV2('لإيقاف')}`,
           { parse_mode: 'MarkdownV2' }
         );
         return;
@@ -148,14 +148,14 @@ export async function handleSettings(ctx) {
         const frequencyName = getFrequencyDisplay(settingValue);
         await ctx.reply(
           `✅ ${bold('تم تحديث إعداداتك بنجاح')}\n\n` +
-          `⏰ تم تغيير تكرار الإشعارات إلى: ${frequencyName}\n\n` +
-          `📝 يمكنك عرض إعداداتك باستخدام ${code('/settings')}`,
+          `⏰ ${escapeMarkdownV2('تم تغيير التكرار إلى:')} ${escapeMarkdownV2(frequencyName)}\n\n` +
+          `📝 ${escapeMarkdownV2('يمكنك عرض إعداداتك باستخدام')} ${code('/settings')}`,
           { parse_mode: 'MarkdownV2' }
         );
       } else {
         await ctx.reply(
           `❌ ${bold('حدث خطأ أثناء تحديث الإعدادات')}\n\n` +
-          `يرجى المحاولة لاحقًا أو التواصل مع الدعم: ${escapeMarkdownV2(config.admin.supportChannel)}`,
+          `${escapeMarkdownV2('يرجى المحاولة لاحقًا أو التواصل مع الدعم:')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
           { parse_mode: 'MarkdownV2' }
         );
       }
@@ -167,14 +167,14 @@ export async function handleSettings(ctx) {
     await ctx.reply(
       `❌ ${bold('نوع الإعداد غير معروف')}\n\n` +
       `📝 ${bold('الإعدادات المدعومة:')}\n` +
-      `• ${code('reminders')} \\- تفعيل/إيقاف التذكيرات\n` +
-      `• ${code('language')} \\- تغيير اللغة\n` +
-      `• ${code('frequency')} \\- تكرار الإشعارات\n\n` +
+      `• ${code('reminders')} ${escapeMarkdownV2('- تفعيل/إيقاف التذكيرات')}\n` +
+      `• ${code('language')} ${escapeMarkdownV2('- تغيير اللغة')}\n` +
+      `• ${code('frequency')} ${escapeMarkdownV2('- تكرار الإشعارات')}\n\n` +
       `💡 ${bold('أمثلة:')}\n` +
       `• ${code('/settings reminders on/off')}\n` +
       `• ${code('/settings language ar/en')}\n` +
       `• ${code('/settings frequency daily/weekly/off')}\n\n` +
-      `📞 للمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}`,
+      `${escapeMarkdownV2('📞 للمساعدة:')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
       { parse_mode: 'MarkdownV2' }
     );
 
@@ -182,7 +182,7 @@ export async function handleSettings(ctx) {
     console.error('❌ خطأ في أمر /settings:', error);
     await ctx.reply(
       `❌ ${bold('حدث خطأ')}\n\n` +
-      `يرجى المحاولة لاحقًا أو التواصل مع ${escapeMarkdownV2(config.admin.supportChannel)}`,
+      `${escapeMarkdownV2('يرجى المحاولة لاحقًا أو التواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
       { parse_mode: 'MarkdownV2' }
     );
   }
@@ -199,7 +199,7 @@ export async function handleToggleReminders(ctx) {
     
     if (success) {
       const status = newValue ? '✅ تم تفعيل التذكيرات' : '🔕 تم إيقاف التذكيرات';
-      await ctx.answerCbQuery(status);
+      await ctx.answerCbQuery(escapeMarkdownV2(status));
       
       // Update the message with new settings
       await handleSettings(ctx);
@@ -222,7 +222,7 @@ export async function handleChangeLanguage(ctx) {
     
     if (success) {
       const languageName = newLanguage === 'ar' ? '🇸🇦 العربية' : '🇺🇸 English';
-      await ctx.answerCbQuery(`✅ تم تغيير اللغة إلى: ${languageName}`);
+      await ctx.answerCbQuery(`✅ ${escapeMarkdownV2('تم تغيير اللغة إلى:')} ${escapeMarkdownV2(languageName)}`);
       
       // Update the message with new settings
       await handleSettings(ctx);
@@ -251,7 +251,7 @@ export async function handleChangeFrequency(ctx) {
     
     if (success) {
       const frequencyName = getFrequencyDisplay(newFrequency);
-      await ctx.answerCbQuery(`✅ تم تغيير التكرار إلى: ${frequencyName}`);
+      await ctx.answerCbQuery(`✅ ${escapeMarkdownV2('تم تغيير التكرار إلى:')} ${escapeMarkdownV2(frequencyName)}`);
       
       // Update the message with new settings
       await handleSettings(ctx);
@@ -270,22 +270,22 @@ export async function handleSettingsHelp(ctx) {
     
     await ctx.reply(
       `📋 ${bold('دليل إعدادات البوت')}\n\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━')}\n\n` +
       `🔔 ${bold('التذكيرات:')}\n` +
-      `• تفعيل/إيقاف التذكيرات التلقائية\n` +
-      `• لا تؤثر على التذكيرات المخصصة\n\n` +
+      `${escapeMarkdownV2('• تفعيل/إيقاف التذكيرات التلقائية')}\n` +
+      `${escapeMarkdownV2('• لا تؤثر على التذكيرات المخصصة')}\n\n` +
       `🌐 ${bold('اللغة:')}\n` +
-      `• تغيير لغة واجهة البوت\n` +
-      `• العربية أو الإنجليزية\n\n` +
+      `${escapeMarkdownV2('• تغيير لغة واجهة البوت')}\n` +
+      `${escapeMarkdownV2('• العربية أو الإنجليزية')}\n\n` +
       `⏰ ${bold('تكرار الإشعارات:')}\n` +
-      `• يومياً: إشعارات يومية\n` +
-      `• أسبوعياً: إشعارات أسبوعية\n` +
-      `• إيقاف: بدون إشعارات\n\n` +
+      `${escapeMarkdownV2('• يومياً: إشعارات يومية')}\n` +
+      `${escapeMarkdownV2('• أسبوعياً: إشعارات أسبوعية')}\n` +
+      `${escapeMarkdownV2('• إيقاف: بدون إشعارات')}\n\n` +
       `💡 ${bold('نصائح:')}\n` +
-      `• استخدم ${code('/addreminder')} لإضافة تذكيرات خاصة\n` +
-      `• يمكنك تغيير الإعدادات في أي وقت\n` +
-      `• الإعدادات تُحفظ تلقائياً\n\n` +
-      `📞 للمساعدة: ${escapeMarkdownV2(config.admin.supportChannel)}`,
+      `${escapeMarkdownV2('• استخدم')} ${code('/addreminder')} ${escapeMarkdownV2('لإضافة تذكيرات خاصة')}\n` +
+      `${escapeMarkdownV2('• يمكنك تغيير الإعدادات في أي وقت')}\n` +
+      `${escapeMarkdownV2('• الإعدادات تُحفظ تلقائياً')}\n\n` +
+      `${escapeMarkdownV2('📞 للمساعدة:')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
       { parse_mode: 'MarkdownV2' }
     );
   } catch (error) {

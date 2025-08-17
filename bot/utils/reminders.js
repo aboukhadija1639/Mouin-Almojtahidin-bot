@@ -2,6 +2,8 @@ import schedule from 'node-schedule';
 import { getLessons, getVerifiedUsersWithReminders } from './database.js';
 import { config } from '../../config.js';
 import { logActivity, logError } from '../middlewares/logger.js';
+// Enhanced: Use hash for config lessons without ID
+import crypto from 'crypto';
 
 let bot = null;
 let scheduledJobs = new Map();
@@ -11,6 +13,13 @@ export function initReminders(telegramBot) {
   bot = telegramBot;
   scheduleAllReminders();
   logActivity('تم تهيئة نظام التذكيرات');
+}
+
+function getLessonKey(lesson) {
+  if (lesson.lesson_id) return lesson.lesson_id;
+  // Hash title + date + time to avoid collisions
+  const hash = crypto.createHash('md5').update(`${lesson.title}_${lesson.date}_${lesson.time}`).digest('hex').slice(0, 8);
+  return `config_${hash}`;
 }
 
 // Schedule all lesson reminders
@@ -53,6 +62,8 @@ export async function scheduleAllReminders() {
 
 // Schedule reminder for a single lesson
 function scheduleReminderForLesson(lesson) {
+  const key = getLessonKey(lesson);
+  scheduledJobs.set(`${key}_24h`, job24h);
   try {
     const lessonDate = new Date(`${lesson.date} ${lesson.time}`);
     const now = new Date();

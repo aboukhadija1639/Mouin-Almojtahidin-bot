@@ -8,15 +8,15 @@ export async function handleFaq(ctx) {
     const faqs = config.faq || [
       {
         question: 'كيف أسجل في الكورس؟',
-        answer: 'استخدم /verify كود_التفعيل من المدرب\\.',
+        answer: 'استخدم /verify كود_التفعيل من المدرب.',
       },
       {
         question: 'كيف أسجل الحضور؟',
-        answer: 'استخدم /attendance رقم_الدرس \\(مثال: /attendance 1\\)\\.',
+        answer: 'استخدم /attendance رقم_الدرس (مثال: /attendance 1).',
       },
       {
         question: 'كيف أرى ملفي؟',
-        answer: 'استخدم /profile \\- عرض معلوماتك\\.',
+        answer: 'استخدم /profile - عرض معلوماتك.',
       },
     ];
     console.log('[FAQ] Retrieved FAQs:', faqs);

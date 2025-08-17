@@ -1,7 +1,7 @@
 // bot/commands/stats.js
 import { getStats } from '../utils/database.js';
 import { config } from '../../config.js';
-import { escapeMarkdownV2 } from '../utils/escapeMarkdownV2.js';
+import { escapeMarkdownV2, bold } from '../utils/escapeMarkdownV2.js';
 
 export async function handleStats(ctx) {
   try {
@@ -14,12 +14,10 @@ export async function handleStats(ctx) {
     if (!isAdmin) {
       console.log(`[STATS] User ${userId} is not authorized`);
       await ctx.reply(
-        escapeMarkdownV2(
-          `🚫 *غير مسموح*\n\n` +
-          `━━━━━━━━━━━━━━━━━━━━\n\n` +
-          `هذا الأمر للمدراء فقط\n` +
-          `💡 تواصل مع ${config.admin.supportChannel}`
-        ),
+        `🚫 ${bold('غير مسموح')}\n\n` +
+        `${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━')}\n\n` +
+        `${escapeMarkdownV2('هذا الأمر للمدراء فقط')}\n` +
+        `💡 ${escapeMarkdownV2('تواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
         { parse_mode: 'MarkdownV2', disable_web_page_preview: true }
       );
       return;
@@ -32,50 +30,40 @@ export async function handleStats(ctx) {
     if (!stats || !stats.totalUsers) {
       console.log('[STATS] No statistics available or invalid data');
       await ctx.reply(
-        escapeMarkdownV2(
-          `❌ *فشل في جلب الإحصائيات*\n\n` +
-          `━━━━━━━━━━━━━━━━━━━━\n\n` +
-          `حاول مرة أخرى لاحقًا`
-        ),
+        `❌ ${bold('فشل في جلب الإحصائيات')}\n\n` +
+        `${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━')}\n\n` +
+        `${escapeMarkdownV2('حاول مرة أخرى لاحقًا')}`,
         { parse_mode: 'MarkdownV2', disable_web_page_preview: true }
       );
       return;
     }
 
     // Build response message
-    let message = escapeMarkdownV2(
-      `📊 *إحصائيات البوت*\n\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n\n`
-    );
-    message += escapeMarkdownV2(`👥 *المستخدمون:*\n`);
-    message += escapeMarkdownV2(`• إجمالي: ${stats.totalUsers}\n`);
-    message += escapeMarkdownV2(`• مفعلون: ${stats.verifiedUsers}\n`);
-    message += escapeMarkdownV2(
-      `• نسبة التفعيل: ${stats.totalUsers > 0 ? Math.round((stats.verifiedUsers / stats.totalUsers) * 100) : 0}\%\n`
-    );
-    message += escapeMarkdownV2(`📚 *الحضور:*\n`);
+    let message = `📊 ${bold('إحصائيات البوت')}\n\n` +
+      `${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━')}\n\n`;
+    message += `${bold('👥 المستخدمون:')}\n`;
+    message += `${escapeMarkdownV2('• إجمالي:')} ${stats.totalUsers}\n`;
+    message += `${escapeMarkdownV2('• مفعلون:')} ${stats.verifiedUsers}\n`;
+    message += `${escapeMarkdownV2('• نسبة التفعيل:')} ${stats.totalUsers > 0 ? Math.round((stats.verifiedUsers / stats.totalUsers) * 100) : 0}%\n\n`;
+    message += `${bold('📚 الحضور:')}\n`;
     message += stats.attendanceByLesson?.length
       ? stats.attendanceByLesson
           .map((l) =>
-            escapeMarkdownV2(
-              `• ${l.title}: ${l.attendance_count}/${l.total_verified} (${l.total_verified > 0 ? Math.round((l.attendance_count / l.total_verified) * 100) : 0}\%)`
-            )
+            `${escapeMarkdownV2('•')} ${escapeMarkdownV2(l.title)}: ${l.attendance_count}/${l.total_verified} (${l.total_verified > 0 ? Math.round((l.attendance_count / l.total_verified) * 100) : 0}%)`
           )
-          .join('\n') + '\n'
-      : escapeMarkdownV2(`• لا توجد بيانات حضور\n`);
-    message += escapeMarkdownV2(`📝 *الواجبات:*\n`);
+          .join('\n') + '\n\n'
+      : `${escapeMarkdownV2('• لا توجد بيانات حضور')}\n\n`;
+    message += `${bold('📝 الواجبات:')}\n`;
     message += stats.submissionsByAssignment?.length
       ? stats.submissionsByAssignment
           .map((a) =>
-            escapeMarkdownV2(
-              `• ${a.title}: ${a.submission_count}/${a.total_verified} (${a.total_verified > 0 ? Math.round((a.submission_count / a.total_verified) * 100) : 0}\%)`
-            )
+            `${escapeMarkdownV2('•')} ${escapeMarkdownV2(a.title)}: ${a.submission_count}/${a.total_verified} (${a.total_verified > 0 ? Math.round((a.submission_count / a.total_verified) * 100) : 0}%)`
           )
-          .join('\n') + '\n'
-      : escapeMarkdownV2(`• لا توجد بيانات واجبات\n`);
-    message += escapeMarkdownV2(`━━━━━━━━━━━━━━━━━━━━\n\n`);
-    message += escapeMarkdownV2(`📅 *وقت الإحصائية:* ${new Date().toLocaleString('ar-SA')}\n`);
-    message += escapeMarkdownV2(`🤖 *بوت معين المجتهدين*`);
+          .join('\n') + '\n\n'
+      : `${escapeMarkdownV2('• لا توجد بيانات واجبات')}\n\n`;
+    message += `${escapeMarkdownV2('━━━━━━━━━━━━━━━━━━━━')}\n\n`;
+    message += `${escapeMarkdownV2('📅 وقت الإحصائية:')} ${escapeMarkdownV2(new Date().toLocaleString('ar-SA'))}\n`;
+    message += `${bold('🤖 بوت معين المجتهدين')}`;
 
     console.log('[STATS] Constructed message:', message);
     await ctx.reply(message, {
@@ -95,9 +83,7 @@ export async function handleStats(ctx) {
       console.error('[STATS] Failed to log error to file:', e);
     }
     await ctx.reply(
-      escapeMarkdownV2(
-        `❌ حدث خطأ، حاول مرة أخرى أو تواصل مع ${config.admin.supportChannel}`
-      ),
+      `❌ ${escapeMarkdownV2('حدث خطأ، حاول مرة أخرى أو تواصل مع')} ${escapeMarkdownV2(config.admin.supportChannel)}`,
       { parse_mode: 'MarkdownV2', disable_web_page_preview: true }
     );
   }
